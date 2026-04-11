@@ -19,47 +19,32 @@ export default function Home() {
     
     const trackVisitor = async () => {
   try {
-    let geoData;
+    // Смяна на геолокацията от ip-api.com на ipapi.co
+    const geoRes = await fetch('https://ipapi.co/json/');
+    const geoData = await geoRes.json();
     
-    // Опитваме първо с ip-api.com
-    try {
-      const geoRes = await fetch('http://ip-api.com/json/');
-      geoData = await geoRes.json();
-      console.log('📍 Локация (ip-api.com):', geoData);
-    } catch (geoError) {
-      console.log('⚠️ ip-api.com failed, using fallback');
-      // Fallback: използваме само IP от сървъра
-      geoData = {
-        query: '0.0.0.0',
-        country: 'Unknown',
-        city: 'Unknown',
-        regionName: 'Unknown'
-      };
-    }
+    console.log('📍 Локация (ipapi.co):', geoData);
     
     const userAgent = navigator.userAgent;
     let deviceType = 'desktop';
     if (/mobile|android|iphone|phone/i.test(userAgent)) deviceType = 'mobile';
     else if (/tablet|ipad/i.test(userAgent)) deviceType = 'tablet';
     
-    console.log('📱 Устройство:', deviceType);
-    console.log('📡 Изпращане към API...');
-    
     const response = await fetch('/api/visitors', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ip: geoData.query,
-        country: geoData.country,
+        ip: geoData.ip,
+        country: geoData.country_name,
         city: geoData.city,
-        region: geoData.regionName,
+        region: geoData.region,
         userAgent: userAgent,
         deviceType: deviceType
       })
     });
     
     const result = await response.json();
-    console.log('📊 Резултат от API:', result);
+    console.log('📊 Резултат:', result);
     
     setVisitCount(result.visitCount);
     setIsNew(result.isNew);

@@ -54,18 +54,10 @@ export async function POST(request) {
   try {
     const { ip, country, city, region, userAgent, deviceType } = await request.json();
     
-    // Ако IP е 0.0.0.0 или Unknown, използваме реалния IP от заявката
-    let realIp = ip;
-    if (ip === '0.0.0.0' || ip === 'Unknown' || !ip) {
-      realIp = request.headers.get('x-forwarded-for')?.split(',')[0] || 
-               request.headers.get('x-real-ip') || 
-               'unknown';
-    }
+    console.log('📱 Получени данни:', { ip, country, city, deviceType });
     
-    console.log('📱 Получени данни:', { ip: realIp, country, city, deviceType });
-    
-    if (!realIp || realIp === 'unknown') {
-      console.log('⚠️ Не може да се определи IP адрес');
+    if (!ip) {
+      console.log('⚠️ Липсва IP адрес');
       return NextResponse.json({ success: true, isNew: false, visitCount: 0 });
     }
     
@@ -73,18 +65,18 @@ export async function POST(request) {
     const { data: existing } = await supabase
       .from('visitors')
       .select('id, visit_count, country, city')
-      .eq('ip_address', realIp)
+      .eq('ip_address', ip)
       .maybeSingle();
     
     const now = new Date().toISOString();
     
+    // Ако нямаме валидна локация от API-то, НЕ презаписваме съществуващата
+    const finalCountry = (country && country !== 'Unknown' && country !== 'unknown') ? country : (existing?.country || 'Unknown');
+    const finalCity = (city && city !== 'Unknown' && city !== 'unknown') ? city : (existing?.city || 'Unknown');
+    
     if (existing) {
       const newCount = existing.visit_count + 1;
-      console.log(`📊 Обновяване на IP ${realIp}: посещение ${newCount}`);
-      
-      // ПРЕДПАЗВАМЕ съществуващите данни – не ги презаписваме с Unknown
-      const finalCountry = (country && country !== 'Unknown') ? country : (existing.country || 'Unknown');
-      const finalCity = (city && city !== 'Unknown') ? city : (existing.city || 'Unknown');
+      console.log(`📊 Обновяване на IP ${ip}: посещение ${newCount}`);
       
       await supabase
         .from('visitors')
@@ -106,12 +98,12 @@ export async function POST(request) {
         deviceType 
       });
     } else {
-      console.log(`📊 Нов IP: ${realIp}`);
+      console.log(`📊 Нов IP: ${ip}`);
       
       await supabase.from('visitors').insert([{
-        ip_address: realIp,
-        country: country || 'Unknown',
-        city: city || 'Unknown',
+        ip_address: ip,
+        country: finalCountry,
+        city: finalCity,
         region: region || 'Unknown',
         user_agent: userAgent,
         device_type: deviceType,
