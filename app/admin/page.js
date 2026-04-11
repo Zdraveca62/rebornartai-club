@@ -112,8 +112,9 @@ export default function AdminPanel() {
       });
       
       const locationMap = new Map();
-      const today = new Date();
-      const todayStr = today.toDateString();
+      
+      // Използваме ISO дата за сравнение (независима от часова зона)
+      const todayISO = new Date().toISOString().split('T')[0];
       
       if (visitorsData.allVisitors) {
         const sortedVisitors = [...visitorsData.allVisitors].sort((a, b) => 
@@ -122,8 +123,11 @@ export default function AdminPanel() {
         
         sortedVisitors.forEach(visitor => {
           const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}`;
-          const visitDate = new Date(visitor.last_visit).toDateString();
-          const isToday = visitDate === todayStr;
+          
+          // Сравнение на дати (само ден, месец, година) в UTC
+          const visitISO = new Date(visitor.last_visit).toISOString().split('T')[0];
+          const isToday = visitISO === todayISO;
+          
           const realSeconds = ipDurationMap.get(visitor.ip_address) || 0;
           
           if (!locationMap.has(key)) {
@@ -283,7 +287,7 @@ export default function AdminPanel() {
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}>Локация</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2"> ({getCurrentDateTime()})</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">({getCurrentDateTime()})</th>
                     <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Общо</th>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}>Последно</th>
                   </tr>
