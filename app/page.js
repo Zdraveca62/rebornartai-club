@@ -17,16 +17,19 @@ export default function Home() {
       return;
     }
     
-    // Проверка дали вече е броено в ТАЗИ СЕСИЯ (sessionStorage)
-    const hasTrackedInSession = sessionStorage.getItem('visit_tracked');
-    if (hasTrackedInSession) {
-      console.log('⏭️ Вече е броено в тази сесия, пропускам');
+    // Проверка дали е пълно зареждане, а не навигация в кеша
+    const isHardReload = window.performance?.getEntriesByType('navigation')[0]?.type === 'reload';
+    const isNewPageLoad = window.performance?.getEntriesByType('navigation')[0]?.type === 'navigate';
+    
+    // Ако е навигация (връщане назад, преход от друга страница) – НЕ БРОИМ
+    if (!isHardReload && !isNewPageLoad) {
+      console.log('⏭️ Пропускане (кеширана навигация)');
       return;
     }
     
     const trackVisitor = async () => {
       try {
-        console.log('📡 Започва проследяване...');
+        console.log('📡 Започва проследяване (пълно зареждане)...');
         
         // Взимаме локацията
         const geoRes = await fetch('http://ip-api.com/json/');
@@ -54,9 +57,6 @@ export default function Home() {
         
         const result = await response.json();
         console.log('📊 Резултат:', result);
-        
-        // Запазваме в sessionStorage, че вече е броено
-        sessionStorage.setItem('visit_tracked', 'true');
         
         setVisitCount(result.visitCount);
         setIsNew(result.isNew);
