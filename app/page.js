@@ -12,6 +12,7 @@ export default function Home() {
   const startTimeRef = useRef(null);
   const sessionIdRef = useRef(null);
   const heartbeatIntervalRef = useRef(null);
+  const finalTimeSentRef = useRef(false);
 
   // Генериране на уникален ID за сесията
   useEffect(() => {
@@ -19,21 +20,25 @@ export default function Home() {
   }, []);
 
   // Функция за изпращане на времето на престой
-  const sendHeartbeat = async (seconds) => {
-    if (seconds < 60) return; // под 1 минута – не изпращаме
+  const sendDuration = async (seconds, isFinal = false) => {
+    if (seconds < 30 && !isFinal) return; // под 30 секунди – не изпращаме (освен ако не е финално)
     
     try {
+      const geoRes = await fetch('https://ipapi.co/json/');
+      const geoData = await geoRes.json();
+      
       await fetch('/api/visit-duration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId: sessionIdRef.current,
-          durationSeconds: seconds
+          durationSeconds: seconds,
+          ip: geoData.ip
         })
       });
-      console.log(`💓 Heartbeat: ${Math.floor(seconds / 60)} минути`);
+      console.log(`💓 Heartbeat: ${Math.floor(seconds / 60)} минути, ${seconds % 60} секунди`);
     } catch (err) {
-      console.error('Грешка при heartbeat:', err);
+      console.error('Грешка при изпращане на време:', err);
     }
   };
 
@@ -45,7 +50,7 @@ export default function Home() {
     heartbeatIntervalRef.current = setInterval(() => {
       if (startTimeRef.current) {
         const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        sendHeartbeat(elapsed);
+        sendDuration(elapsed);
       }
     }, 60000); // всяка минута
     
@@ -54,9 +59,10 @@ export default function Home() {
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
       }
-      if (startTimeRef.current) {
+      if (startTimeRef.current && !finalTimeSentRef.current) {
+        finalTimeSentRef.current = true;
         const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        sendHeartbeat(elapsed);
+        sendDuration(elapsed, true);
       }
     };
     
@@ -66,15 +72,16 @@ export default function Home() {
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
       }
-      if (startTimeRef.current) {
+      if (startTimeRef.current && !finalTimeSentRef.current) {
+        finalTimeSentRef.current = true;
         const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        sendHeartbeat(elapsed);
+        sendDuration(elapsed, true);
       }
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, []);
 
-  // Проследяване на посещенията (съществуващата логика)
+  // Проследяване на посещенията
   useEffect(() => {
     if (pathname === '/admin' || pathname === '/admin-login' || pathname.startsWith('/admin')) {
       console.log('⏭️ Пропускане на броене (административна страница)');
@@ -112,7 +119,8 @@ export default function Home() {
             city: geoData.city,
             region: geoData.region,
             userAgent: userAgent,
-            deviceType: deviceType
+            deviceType: deviceType,
+            sessionId: sessionIdRef.current
           })
         });
         

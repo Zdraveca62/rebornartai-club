@@ -8,15 +8,20 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(request) {
   try {
-    const { sessionId, durationSeconds } = await request.json();
+    const { sessionId, durationSeconds, ip } = await request.json();
     
-    // Взимаме IP адреса от хедърите
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
+    // Ако IP не е подаден, взимаме от хедърите
+    let finalIp = ip;
+    if (!finalIp || finalIp === '0.0.0.0') {
+      finalIp = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
+    }
+    
+    console.log('💓 Записване на време:', { sessionId, durationSeconds, ip: finalIp });
     
     const { error } = await supabase
       .from('visit_duration')
       .insert({
-        ip_address: ip,
+        ip_address: finalIp,
         session_id: sessionId,
         duration_seconds: durationSeconds
       });
@@ -32,7 +37,6 @@ export async function POST(request) {
 
 export async function GET() {
   try {
-    // Връща статистика за времената (за админ панела)
     const { data, error } = await supabase
       .from('visit_duration')
       .select('*')
