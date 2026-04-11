@@ -17,15 +17,18 @@ export default function Home() {
       return;
     }
     
-    // Проверка дали вече е броено в ТАЗИ СЕСИЯ (sessionStorage)
-    const hasTrackedInSession = sessionStorage.getItem('visit_tracked');
-    if (hasTrackedInSession) {
-      console.log('⏭️ Вече е броено в тази сесия, пропускам');
-      return;
-    }
-    
     const trackVisitor = async () => {
       try {
+        // Проверка дали е броено в последните 30 минути
+        const lastVisit = localStorage.getItem('last_visit_time');
+        const now = Date.now();
+        const THIRTY_MINUTES = 30 * 60 * 1000; // 30 минути в милисекунди
+        
+        if (lastVisit && (now - parseInt(lastVisit)) < THIRTY_MINUTES) {
+          console.log('⏭️ Последното посещение е от по-малко от 30 минути, пропускам');
+          return;
+        }
+        
         console.log('📡 Започва проследяване...');
         
         // Взимаме локацията
@@ -55,8 +58,8 @@ export default function Home() {
         const result = await response.json();
         console.log('📊 Резултат от API:', result);
         
-        // Запазваме в sessionStorage, че вече е броено
-        sessionStorage.setItem('visit_tracked', 'true');
+        // Запазваме времето на последното посещение
+        localStorage.setItem('last_visit_time', now.toString());
         
         setVisitCount(result.visitCount);
         setIsNew(result.isNew);
