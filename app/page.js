@@ -52,7 +52,7 @@ export default function Home() {
         const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
         sendDuration(elapsed);
       }
-    }, 60000); // всяка минута
+    }, 15000); // петнадесет секунди
     
     // При излизане от страницата
     const handleBeforeUnload = () => {
@@ -92,7 +92,7 @@ export default function Home() {
       try {
         const lastVisit = localStorage.getItem('last_visit_time');
         const now = Date.now();
-        const THIRTY_MINUTES = 30 * 60 * 1000;
+        const THIRTY_MINUTES = 10 * 60 * 1000;
         
         if (lastVisit && (now - parseInt(lastVisit)) < THIRTY_MINUTES) {
           console.log('⏭️ Последното посещение е от по-малко от 30 минути, пропускам');
