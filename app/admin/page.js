@@ -15,41 +15,6 @@ const formatDate = (dateString) => {
   return `${day}/${month}/${year}`;
 };
 
-// Функция за преобразуване на държава в код (BG, USA, DE и т.н.)
-const getCountryCode = (countryName) => {
-  const countryCodes = {
-    'Bulgaria': 'BG',
-    'Ireland': 'IE',
-    'Germany': 'DE',
-    'France': 'FR',
-    'Spain': 'ES',
-    'United Kingdom': 'UK',
-    'United States': 'USA',
-    'Italy': 'IT',
-    'Netherlands': 'NL',
-    'Belgium': 'BE',
-    'Greece': 'GR',
-    'Portugal': 'PT',
-    'Sweden': 'SE',
-    'Norway': 'NO',
-    'Denmark': 'DK',
-    'Finland': 'FI',
-    'Poland': 'PL',
-    'Czech Republic': 'CZ',
-    'Austria': 'AT',
-    'Switzerland': 'CH',
-    'Russia': 'RU',
-    'Turkey': 'TR',
-    'Japan': 'JP',
-    'China': 'CN',
-    'India': 'IN',
-    'Brazil': 'BR',
-    'Canada': 'CA',
-    'Australia': 'AU'
-  };
-  return countryCodes[countryName] || countryName?.substring(0, 2).toUpperCase() || '??';
-};
-
 export default function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -124,7 +89,7 @@ export default function AdminPanel() {
         const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}`;
         const visitDate = new Date(visitor.last_visit).toDateString();
         const isToday = visitDate === todayStr;
-        const minutesSpent = (visitor.visit_count || 1) * 5; // 5 минути на посещение
+        const minutesSpent = (visitor.visit_count || 1) * 5;
         
         if (!locationMap.has(key)) {
           locationMap.set(key, {
@@ -152,7 +117,7 @@ export default function AdminPanel() {
       });
     }
     
-    // Преобразуване в масив и сортиране по общ брой посещения
+    // Преобразуване в масив и сортиране
     let locationStats = Array.from(locationMap.values())
       .sort((a, b) => b.totalVisits - a.totalVisits);
     
@@ -298,7 +263,7 @@ export default function AdminPanel() {
                     paginatedLocations.map((loc, idx) => (
                       <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                         <td style={{ padding: '0.5rem' }}>
-                          {loc.city}, {getCountryCode(loc.country)}
+                          {loc.city}, {loc.country}
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.todayVisits || 0}</td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.todayMinutes || 0}</td>
