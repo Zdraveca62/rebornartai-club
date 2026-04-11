@@ -83,15 +83,12 @@ export default function AdminPanel() {
 
   const fetchStats = async () => {
     try {
-      // Зареждаме посетителите
       const visitorsRes = await fetch('/api/visitors');
       const visitorsData = await visitorsRes.json();
       
-      // Зареждаме времената на престой
       const durationRes = await fetch('/api/visit-duration');
       const durations = await durationRes.json();
       
-      // Групираме времената по IP адрес
       const ipDurationMap = new Map();
       durations.forEach(d => {
         const ip = d.ip_address;
@@ -99,7 +96,6 @@ export default function AdminPanel() {
         ipDurationMap.set(ip, current + d.duration_seconds);
       });
       
-      // Групиране по държава и град
       const locationMap = new Map();
       const today = new Date();
       const todayStr = today.toDateString();
@@ -113,8 +109,6 @@ export default function AdminPanel() {
           const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}`;
           const visitDate = new Date(visitor.last_visit).toDateString();
           const isToday = visitDate === todayStr;
-          
-          // Взимаме реалното време от visit_duration таблицата
           const realMinutes = formatMinutes(ipDurationMap.get(visitor.ip_address) || 0);
           const estimatedMinutes = (visitor.visit_count || 1) * 5;
           const finalMinutes = realMinutes > 0 ? realMinutes : estimatedMinutes;
@@ -147,7 +141,6 @@ export default function AdminPanel() {
         });
       }
       
-      // Сортиране на финалния масив (най-новите първи)
       let locationStats = Array.from(locationMap.values())
         .sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
       
@@ -197,7 +190,6 @@ export default function AdminPanel() {
     }
   };
 
-  // Пагинация за locationStats
   const totalPages = Math.ceil((stats.locationStats?.length || 0) / stats.itemsPerPage);
   const paginatedLocations = stats.locationStats?.slice(
     (stats.currentPage - 1) * stats.itemsPerPage,
@@ -301,7 +293,7 @@ export default function AdminPanel() {
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.totalVisits || 0}</td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.totalMinutes || 0}</td>
                         <td style={{ padding: '0.5rem' }}>{formatDate(loc.lastVisit)}</td>
-                      </table>
+                      </tr>
                     ))
                   ) : (
                     <tr>
@@ -314,32 +306,13 @@ export default function AdminPanel() {
               </table>
             </div>
 
-            {/* Пагинация */}
             {totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => goToPage(1)}
-                  disabled={stats.currentPage === 1}
-                  style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: stats.currentPage === 1 ? 'not-allowed' : 'pointer', opacity: stats.currentPage === 1 ? 0.5 : 1 }}
-                >
-                  «
-                </button>
+                <button onClick={() => goToPage(1)} disabled={stats.currentPage === 1} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: stats.currentPage === 1 ? 'not-allowed' : 'pointer', opacity: stats.currentPage === 1 ? 0.5 : 1 }}>«</button>
                 {[...Array(totalPages)].map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => goToPage(i + 1)}
-                    style={{ background: stats.currentPage === i + 1 ? '#8b5cf6' : 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer' }}
-                  >
-                    {i + 1}
-                  </button>
+                  <button key={i} onClick={() => goToPage(i + 1)} style={{ background: stats.currentPage === i + 1 ? '#8b5cf6' : 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer' }}>{i + 1}</button>
                 ))}
-                <button
-                  onClick={() => goToPage(totalPages)}
-                  disabled={stats.currentPage === totalPages}
-                  style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: stats.currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: stats.currentPage === totalPages ? 0.5 : 1 }}
-                >
-                  »
-                </button>
+                <button onClick={() => goToPage(totalPages)} disabled={stats.currentPage === totalPages} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: stats.currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: stats.currentPage === totalPages ? 0.5 : 1 }}>»</button>
               </div>
             )}
 
@@ -374,58 +347,29 @@ export default function AdminPanel() {
             <form onSubmit={handleAddSong}>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Заглавие:</label>
-                <input
-                  type="text"
-                  placeholder="Заглавие на песента"
-                  value={newSong.title}
-                  onChange={(e) => setNewSong({...newSong, title: e.target.value})}
-                  required
-                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }}
-                />
+                <input type="text" placeholder="Заглавие на песента" value={newSong.title} onChange={(e) => setNewSong({...newSong, title: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
               </div>
 
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>YouTube ID:</label>
-                <input
-                  type="text"
-                  placeholder="напр. uxSIvsoWIH8"
-                  value={newSong.youtubeId}
-                  onChange={(e) => setNewSong({...newSong, youtubeId: e.target.value})}
-                  required
-                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }}
-                />
-                <p style={{ color: '#9ca3af', fontSize: '0.75rem', marginTop: '0.25rem' }}>
-                  Вземи ID от URL: https://youtube.com/watch?v=<strong>ТУК Е ID</strong>
-                </p>
+                <input type="text" placeholder="напр. uxSIvsoWIH8" value={newSong.youtubeId} onChange={(e) => setNewSong({...newSong, youtubeId: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
+                <p style={{ color: '#9ca3af', fontSize: '0.75rem', marginTop: '0.25rem' }}>Вземи ID от URL: https://youtube.com/watch?v=<strong>ТУК Е ID</strong></p>
               </div>
 
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Текст (lyrics):</label>
-                <textarea
-                  placeholder="Текст на песента..."
-                  value={newSong.lyrics}
-                  onChange={(e) => setNewSong({...newSong, lyrics: e.target.value})}
-                  required
-                  rows="6"
-                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }}
-                />
+                <textarea placeholder="Текст на песента..." value={newSong.lyrics} onChange={(e) => setNewSong({...newSong, lyrics: e.target.value})} required rows="6" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
               </div>
 
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Език:</label>
-                <select
-                  value={newSong.language}
-                  onChange={(e) => setNewSong({...newSong, language: e.target.value})}
-                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }}
-                >
+                <select value={newSong.language} onChange={(e) => setNewSong({...newSong, language: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }}>
                   <option value="bg">🇧🇬 Български</option>
                   <option value="en">🇬🇧 English</option>
                 </select>
               </div>
 
-              <button type="submit" style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.75rem 2rem', borderRadius: '8px', cursor: 'pointer' }}>
-                + Добави песен
-              </button>
+              <button type="submit" style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.75rem 2rem', borderRadius: '8px', cursor: 'pointer' }}>+ Добави песен</button>
             </form>
             
             {status && <p style={{ marginTop: '1rem', color: '#8b5cf6' }}>{status}</p>}
