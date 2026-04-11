@@ -234,7 +234,7 @@ export default function AdminPanel() {
           </button>
         </div>
 
-        {activeTab === 'stats' && (
+{activeTab === 'stats' && (
   <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem' }}>
     
     <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
@@ -242,7 +242,7 @@ export default function AdminPanel() {
       <p style={{ fontSize: '3rem', fontWeight: 'bold', color: '#8b5cf6' }}>{stats.totalVisits || 0}</p>
     </div>
 
-    <h3 style={{ color: 'white', marginBottom: '1rem' }}>🌍 Последни посещения</h3>
+    <h3 style={{ color: 'white', marginBottom: '1rem' }}>🌍 Последни посещения (най-новите отгоре)</h3>
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', color: 'white' }}>
         <thead>
@@ -256,17 +256,15 @@ export default function AdminPanel() {
         </thead>
         <tbody>
           {stats.allVisitors && stats.allVisitors.length > 0 ? (
-            stats.allVisitors
-              .sort((a, b) => new Date(b.last_visit) - new Date(a.last_visit))
-              .map((visitor, idx) => (
-                <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                  <td style={{ padding: '0.5rem' }}>{visitor.ip_address || 'Unknown'}</td>
-                  <td style={{ padding: '0.5rem' }}>{visitor.city || 'Unknown'}, {visitor.country || 'Unknown'}</td>
-                  <td style={{ padding: '0.5rem' }}>{visitor.device_type || 'desktop'}</td>
-                  <td style={{ padding: '0.5rem' }}>{visitor.visit_count || 1}</td>
-                  <td style={{ padding: '0.5rem' }}>{formatDate(visitor.last_visit)} (без час)</td>
-                </tr>
-              ))
+            stats.allVisitors.map((visitor, idx) => (
+              <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                <td style={{ padding: '0.5rem' }}>{visitor.ip_address || 'Unknown'}</td>
+                <td style={{ padding: '0.5rem' }}>{visitor.city || 'Unknown'}, {visitor.country || 'Unknown'}</td>
+                <td style={{ padding: '0.5rem' }}>{visitor.device_type || 'desktop'}</td>
+                <td style={{ padding: '0.5rem' }}>{visitor.visit_count || 1}</td>
+                <td style={{ padding: '0.5rem' }}>{new Date(visitor.last_visit).toLocaleString()}</td>
+              </tr>
+            ))
           ) : (
             <tr>
               <td colSpan="5" style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af' }}>
@@ -276,24 +274,6 @@ export default function AdminPanel() {
           )}
         </tbody>
       </table>
-    </div>
-
-    <div style={{ marginTop: '2rem' }}>
-      <h3 style={{ color: 'white', marginBottom: '1rem' }}>📱 ТОТАЛ по устройства</h3>
-      <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', minWidth: '120px' }}>
-          <p style={{ color: '#9ca3af' }}>💻 Desktop</p>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#8b5cf6' }}>{stats.deviceStats?.desktop || 0}</p>
-        </div>
-        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', minWidth: '120px' }}>
-          <p style={{ color: '#9ca3af' }}>📱 Mobile</p>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ec4899' }}>{stats.deviceStats?.mobile || 0}</p>
-        </div>
-        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', minWidth: '120px' }}>
-          <p style={{ color: '#9ca3af' }}>📟 Tablet</p>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#14b8a6' }}>{stats.deviceStats?.tablet || 0}</p>
-        </div>
-      </div>
     </div>
 
     <button onClick={fetchStats} style={{ marginTop: '2rem', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', width: '100%' }}>
