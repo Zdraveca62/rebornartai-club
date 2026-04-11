@@ -22,7 +22,7 @@ export default function Home() {
         // Проверка дали е броено в последните 30 минути
         const lastVisit = localStorage.getItem('last_visit_time');
         const now = Date.now();
-        const THIRTY_MINUTES = 30 * 60 * 1000; // 30 минути в милисекунди
+        const THIRTY_MINUTES = 30 * 60 * 1000;
         
         if (lastVisit && (now - parseInt(lastVisit)) < THIRTY_MINUTES) {
           console.log('⏭️ Последното посещение е от по-малко от 30 минути, пропускам');
@@ -31,10 +31,10 @@ export default function Home() {
         
         console.log('📡 Започва проследяване...');
         
-        // Взимаме локацията
-        const geoRes = await fetch('http://ip-api.com/json/');
+        // ИЗПОЛЗВАМЕ ipapi.co (работи на Vercel, няма CORS проблеми)
+        const geoRes = await fetch('https://ipapi.co/json/');
         const geoData = await geoRes.json();
-        console.log('📍 Локация:', geoData);
+        console.log('📍 Локация (ipapi.co):', geoData);
         
         // Определяне на устройство
         const userAgent = navigator.userAgent;
@@ -46,10 +46,10 @@ export default function Home() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ip: geoData.query,
-            country: geoData.country,
+            ip: geoData.ip,
+            country: geoData.country_name,
             city: geoData.city,
-            region: geoData.regionName,
+            region: geoData.region,
             userAgent: userAgent,
             deviceType: deviceType
           })
@@ -58,14 +58,18 @@ export default function Home() {
         const result = await response.json();
         console.log('📊 Резултат от API:', result);
         
-        // Запазваме времето на последното посещение
-        localStorage.setItem('last_visit_time', now.toString());
-        
-        setVisitCount(result.visitCount);
-        setIsNew(result.isNew);
-        setShowBanner(true);
-        
-        setTimeout(() => setShowBanner(false), 5000);
+        if (result.success) {
+          // Запазваме времето на последното посещение
+          localStorage.setItem('last_visit_time', now.toString());
+          
+          setVisitCount(result.visitCount);
+          setIsNew(result.isNew);
+          setShowBanner(true);
+          
+          setTimeout(() => setShowBanner(false), 5000);
+        } else {
+          console.error('❌ API върна грешка:', result);
+        }
       } catch (err) {
         console.error('❌ Грешка при проследяване:', err);
       }
