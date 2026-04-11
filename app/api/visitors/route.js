@@ -56,23 +56,13 @@ export async function POST(request) {
     
     console.log('📱 Получени данни:', { ip, country, city, deviceType });
     
-    if (!ip) {
-      console.log('⚠️ Липсва IP адрес');
-      return NextResponse.json({ success: true, isNew: false, visitCount: 0 });
-    }
-    
-    // Търсим по IP адрес
     const { data: existing } = await supabase
       .from('visitors')
-      .select('id, visit_count, country, city')
+      .select('id, visit_count')
       .eq('ip_address', ip)
       .maybeSingle();
     
     const now = new Date().toISOString();
-    
-    // Ако нямаме валидна локация от API-то, НЕ презаписваме съществуващата
-    const finalCountry = (country && country !== 'Unknown' && country !== 'unknown') ? country : (existing?.country || 'Unknown');
-    const finalCity = (city && city !== 'Unknown' && city !== 'unknown') ? city : (existing?.city || 'Unknown');
     
     if (existing) {
       const newCount = existing.visit_count + 1;
@@ -83,9 +73,9 @@ export async function POST(request) {
         .update({ 
           visit_count: newCount, 
           last_visit: now,
-          country: finalCountry,
-          city: finalCity,
-          region: region || existing.region || 'Unknown',
+          country, 
+          city, 
+          region, 
           user_agent: userAgent,
           device_type: deviceType
         })
@@ -102,9 +92,9 @@ export async function POST(request) {
       
       await supabase.from('visitors').insert([{
         ip_address: ip,
-        country: finalCountry,
-        city: finalCity,
-        region: region || 'Unknown',
+        country,
+        city,
+        region,
         user_agent: userAgent,
         device_type: deviceType,
         visit_count: 1,
