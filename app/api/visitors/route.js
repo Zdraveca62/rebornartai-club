@@ -72,7 +72,7 @@ export async function POST(request) {
     // Търсим по IP адрес
     const { data: existing } = await supabase
       .from('visitors')
-      .select('id, visit_count')
+      .select('id, visit_count, country, city')
       .eq('ip_address', realIp)
       .maybeSingle();
     
@@ -82,14 +82,18 @@ export async function POST(request) {
       const newCount = existing.visit_count + 1;
       console.log(`📊 Обновяване на IP ${realIp}: посещение ${newCount}`);
       
+      // ПРЕДПАЗВАМЕ съществуващите данни – не ги презаписваме с Unknown
+      const finalCountry = (country && country !== 'Unknown') ? country : (existing.country || 'Unknown');
+      const finalCity = (city && city !== 'Unknown') ? city : (existing.city || 'Unknown');
+      
       await supabase
         .from('visitors')
         .update({ 
           visit_count: newCount, 
           last_visit: now,
-          country: country || 'Unknown', 
-          city: city || 'Unknown', 
-          region: region || 'Unknown', 
+          country: finalCountry,
+          city: finalCity,
+          region: region || existing.region || 'Unknown',
           user_agent: userAgent,
           device_type: deviceType
         })
