@@ -18,43 +18,58 @@ export default function Home() {
     }
     
     const trackVisitor = async () => {
-      try {
-        const geoRes = await fetch('http://ip-api.com/json/');
-        const geoData = await geoRes.json();
-        
-        const userAgent = navigator.userAgent;
-        let deviceType = 'desktop';
-        if (/mobile|android|iphone|phone/i.test(userAgent)) deviceType = 'mobile';
-        else if (/tablet|ipad/i.test(userAgent)) deviceType = 'tablet';
-        
-        const response = await fetch('/api/visitors', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ip: geoData.query,
-            country: geoData.country,
-            city: geoData.city,
-            region: geoData.regionName,
-            userAgent: userAgent,
-            deviceType: deviceType
-          })
-        });
-        
-        const result = await response.json();
-        console.log('📊 Резултат:', result);
-        
-        // Запазваме в sessionStorage, че вече е броено
-        sessionStorage.setItem('visit_tracked', 'true');
-        
-        setVisitCount(result.visitCount);
-        setIsNew(result.isNew);
-        setShowBanner(true);
-        
-        setTimeout(() => setShowBanner(false), 5000);
-      } catch (err) {
-        console.error('❌ Грешка:', err);
-      }
-    };
+  try {
+    let geoData;
+    
+    // Опитваме първо с ip-api.com
+    try {
+      const geoRes = await fetch('http://ip-api.com/json/');
+      geoData = await geoRes.json();
+      console.log('📍 Локация (ip-api.com):', geoData);
+    } catch (geoError) {
+      console.log('⚠️ ip-api.com failed, using fallback');
+      // Fallback: използваме само IP от сървъра
+      geoData = {
+        query: '0.0.0.0',
+        country: 'Unknown',
+        city: 'Unknown',
+        regionName: 'Unknown'
+      };
+    }
+    
+    const userAgent = navigator.userAgent;
+    let deviceType = 'desktop';
+    if (/mobile|android|iphone|phone/i.test(userAgent)) deviceType = 'mobile';
+    else if (/tablet|ipad/i.test(userAgent)) deviceType = 'tablet';
+    
+    console.log('📱 Устройство:', deviceType);
+    console.log('📡 Изпращане към API...');
+    
+    const response = await fetch('/api/visitors', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ip: geoData.query,
+        country: geoData.country,
+        city: geoData.city,
+        region: geoData.regionName,
+        userAgent: userAgent,
+        deviceType: deviceType
+      })
+    });
+    
+    const result = await response.json();
+    console.log('📊 Резултат от API:', result);
+    
+    setVisitCount(result.visitCount);
+    setIsNew(result.isNew);
+    setShowBanner(true);
+    
+    setTimeout(() => setShowBanner(false), 5000);
+  } catch (err) {
+    console.error('❌ Грешка при проследяване:', err);
+  }
+};
     
     trackVisitor();
   }, []); // Празният масив гарантира, че ефектът се изпълнява само веднъж

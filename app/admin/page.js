@@ -4,20 +4,72 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+// Функция за форматиране на дата в DD/MM/YY (без час, Ирландска часова зона)
+const formatDate = (dateString) => {
+  if (!dateString) return 'Неизвестно';
+  const date = new Date(dateString);
+  const irishDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
+  const day = irishDate.getDate().toString().padStart(2, '0');
+  const month = (irishDate.getMonth() + 1).toString().padStart(2, '0');
+  const year = irishDate.getFullYear().toString().slice(-2);
+  return `${day}/${month}/${year}`;
+};
+
+// Функция за преобразуване на държава в код (BG, USA, DE и т.н.)
+const getCountryCode = (countryName) => {
+  const countryCodes = {
+    'Bulgaria': 'BG',
+    'Ireland': 'IE',
+    'Germany': 'DE',
+    'France': 'FR',
+    'Spain': 'ES',
+    'United Kingdom': 'UK',
+    'United States': 'USA',
+    'Italy': 'IT',
+    'Netherlands': 'NL',
+    'Belgium': 'BE',
+    'Greece': 'GR',
+    'Portugal': 'PT',
+    'Sweden': 'SE',
+    'Norway': 'NO',
+    'Denmark': 'DK',
+    'Finland': 'FI',
+    'Poland': 'PL',
+    'Czech Republic': 'CZ',
+    'Austria': 'AT',
+    'Switzerland': 'CH',
+    'Russia': 'RU',
+    'Turkey': 'TR',
+    'Japan': 'JP',
+    'China': 'CN',
+    'India': 'IN',
+    'Brazil': 'BR',
+    'Canada': 'CA',
+    'Australia': 'AU'
+  };
+  return countryCodes[countryName] || countryName?.substring(0, 2).toUpperCase() || '??';
+};
+
 export default function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('stats');
   const [songs, setSongs] = useState([]);
-  const [stats, setStats] = useState({ totalVisits: 0, deviceStats: { desktop: 0, mobile: 0, tablet: 0 }, ipStats: [] });
+  const [stats, setStats] = useState({ 
+    totalVisits: 0, 
+    totalMinutes: 0,
+    deviceStats: { desktop: 0, mobile: 0, tablet: 0 }, 
+    locationStats: [],
+    currentPage: 1,
+    itemsPerPage: 5
+  });
   const [newSong, setNewSong] = useState({ title: '', youtubeId: '', lyrics: '', language: 'bg' });
   const [status, setStatus] = useState('');
   const router = useRouter();
 
-  // Проверка за токен при зареждане (използва sessionStorage)
+  // Проверка за токен при зареждане
   useEffect(() => {
     const checkAuth = async () => {
-      // Взимаме от sessionStorage (не localStorage)
       const token = sessionStorage.getItem('admin_token');
       
       if (!token) {
@@ -61,8 +113,58 @@ export default function AdminPanel() {
   const fetchStats = async () => {
     const res = await fetch('/api/visitors');
     const data = await res.json();
-    console.log('📊 Статистика от API:', data);
-    setStats(data);
+    
+    // Групиране по държава и град
+    const locationMap = new Map();
+    const today = new Date();
+    const todayStr = today.toDateString();
+    
+    if (data.allVisitors) {
+      data.allVisitors.forEach(visitor => {
+        const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}`;
+        const visitDate = new Date(visitor.last_visit).toDateString();
+        const isToday = visitDate === todayStr;
+        const minutesSpent = (visitor.visit_count || 1) * 5; // 5 минути на посещение
+        
+        if (!locationMap.has(key)) {
+          locationMap.set(key, {
+            country: visitor.country || 'Unknown',
+            city: visitor.city || 'Unknown',
+            todayVisits: 0,
+            todayMinutes: 0,
+            totalVisits: 0,
+            totalMinutes: 0,
+            lastVisit: visitor.last_visit
+          });
+        }
+        
+        const loc = locationMap.get(key);
+        if (isToday) {
+          loc.todayVisits += (visitor.visit_count || 1);
+          loc.todayMinutes += minutesSpent;
+        }
+        loc.totalVisits += (visitor.visit_count || 1);
+        loc.totalMinutes += minutesSpent;
+        if (new Date(visitor.last_visit) > new Date(loc.lastVisit)) {
+          loc.lastVisit = visitor.last_visit;
+        }
+        locationMap.set(key, loc);
+      });
+    }
+    
+    // Преобразуване в масив и сортиране по общ брой посещения
+    let locationStats = Array.from(locationMap.values())
+      .sort((a, b) => b.totalVisits - a.totalVisits);
+    
+    const totalMinutes = locationStats.reduce((sum, loc) => sum + loc.totalMinutes, 0);
+    
+    setStats({ 
+      ...data, 
+      totalMinutes,
+      locationStats,
+      currentPage: 1,
+      itemsPerPage: 5
+    });
   };
 
   const handleAddSong = async (e) => {
@@ -97,6 +199,17 @@ export default function AdminPanel() {
     }
   };
 
+  // Пагинация
+  const totalPages = Math.ceil((stats.locationStats?.length || 0) / stats.itemsPerPage);
+  const paginatedLocations = stats.locationStats?.slice(
+    (stats.currentPage - 1) * stats.itemsPerPage,
+    stats.currentPage * stats.itemsPerPage
+  ) || [];
+
+  const goToPage = (page) => {
+    setStats(prev => ({ ...prev, currentPage: page }));
+  };
+
   if (isLoading) {
     return (
       <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e1b4b, #000000, #4c1d95)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -113,26 +226,24 @@ export default function AdminPanel() {
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e1b4b, #000000, #4c1d95)', padding: '2rem' }}>
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <Link href="/">
-          <button 
-  onClick={() => {
-    sessionStorage.removeItem('admin_token');
-    window.location.href = '/';
-  }}
-  style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}
->
-  ← Към сайта
-          </button>
-        </Link>
         <button 
-  onClick={() => {
-    sessionStorage.removeItem('admin_token');
-    router.push('/');
-  }}
-  style={{ background: 'rgba(255,0,0,0.3)', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}
->
-  🚪 Изход
-</button>
+          onClick={() => {
+            sessionStorage.removeItem('admin_token');
+            window.location.href = '/';
+          }}
+          style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}
+        >
+          ← Към сайта
+        </button>
+        <button 
+          onClick={() => {
+            sessionStorage.removeItem('admin_token');
+            window.location.href = '/';
+          }}
+          style={{ background: 'rgba(255,0,0,0.3)', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}
+        >
+          🚪 Изход
+        </button>
       </div>
 
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -153,68 +264,112 @@ export default function AdminPanel() {
         </div>
 
         {activeTab === 'stats' && (
-  <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem' }}>
-    
-    <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-      <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>ОБЩ БРОЙ ВЛИЗАНИЯ В САЙТА</p>
-      <p style={{ fontSize: '3rem', fontWeight: 'bold', color: '#8b5cf6' }}>{stats.totalVisits || 0}</p>
-    </div>
+          <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem' }}>
+            
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>ОБЩ БРОЙ ВЛИЗАНИЯ В САЙТА</p>
+              <p style={{ fontSize: '3rem', fontWeight: 'bold', color: '#8b5cf6' }}>{stats.totalVisits || 0}</p>
+              <p style={{ color: '#9ca3af', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                Общо време: <strong style={{ color: '#8b5cf6' }}>{stats.totalMinutes || 0}</strong> минути
+              </p>
+            </div>
 
-    <h3 style={{ color: 'white', marginBottom: '1rem' }}>🌍 Статистика по IP адреси</h3>
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', color: 'white' }}>
-        <thead>
-          <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
-            <th style={{ padding: '0.5rem', textAlign: 'left' }}>IP Адрес / Локация</th>
-            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Посещения</th>
-            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Устройство</th>
-            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Последно посещение</th>
-          </tr>
-        </thead>
-        <tbody>
-          {stats.ipStats && stats.ipStats.length > 0 ? (
-            stats.ipStats.map((ip, idx) => (
-              <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                <td style={{ padding: '0.5rem' }}>{ip.ip_address || 'Неизвестен'} - {ip.city || ''} {ip.country || ''}</td>
-                <td style={{ padding: '0.5rem' }}>{ip.totalVisits || 0}</td>
-                <td style={{ padding: '0.5rem' }}>{ip.deviceType || 'desktop'}</td>
-                <td style={{ padding: '0.5rem' }}>{ip.lastVisit ? new Date(ip.lastVisit).toLocaleString() : 'Неизвестно'}</td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="4" style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af' }}>
-                Няма данни за посетители
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+            <h3 style={{ color: 'white', marginBottom: '1rem' }}>🌍 Статистика по локации</h3>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', color: 'white' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
+                    <th style={{ padding: '0.5rem', textAlign: 'left' }}>Location</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Днес</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Всичко</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'left' }}>Последно</th>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
+                    <th style={{ padding: '0.5rem', textAlign: 'left' }}></th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>Visits</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>min</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>Visits</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>min</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'left' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedLocations.length > 0 ? (
+                    paginatedLocations.map((loc, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                        <td style={{ padding: '0.5rem' }}>
+                          {loc.city}, {getCountryCode(loc.country)}
+                        </td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.todayVisits || 0}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.todayMinutes || 0}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.totalVisits || 0}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.totalMinutes || 0}</td>
+                        <td style={{ padding: '0.5rem' }}>{formatDate(loc.lastVisit)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="6" style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af' }}>
+                        Няма данни за посетители
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-    <div style={{ marginTop: '2rem' }}>
-      <h3 style={{ color: 'white', marginBottom: '1rem' }}>📱 ТОТАЛ по устройства</h3>
-      <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', minWidth: '120px' }}>
-          <p style={{ color: '#9ca3af' }}>💻 Desktop</p>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#8b5cf6' }}>{stats.deviceStats?.desktop || 0}</p>
-        </div>
-        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', minWidth: '120px' }}>
-          <p style={{ color: '#9ca3af' }}>📱 Mobile</p>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ec4899' }}>{stats.deviceStats?.mobile || 0}</p>
-        </div>
-        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', minWidth: '120px' }}>
-          <p style={{ color: '#9ca3af' }}>📟 Tablet</p>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#14b8a6' }}>{stats.deviceStats?.tablet || 0}</p>
-        </div>
-      </div>
-    </div>
+            {/* Пагинация */}
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => goToPage(1)}
+                  disabled={stats.currentPage === 1}
+                  style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: stats.currentPage === 1 ? 'not-allowed' : 'pointer', opacity: stats.currentPage === 1 ? 0.5 : 1 }}
+                >
+                  «
+                </button>
+                {[...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => goToPage(i + 1)}
+                    style={{ background: stats.currentPage === i + 1 ? '#8b5cf6' : 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+                <button
+                  onClick={() => goToPage(totalPages)}
+                  disabled={stats.currentPage === totalPages}
+                  style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: stats.currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: stats.currentPage === totalPages ? 0.5 : 1 }}
+                >
+                  »
+                </button>
+              </div>
+            )}
 
-    <button onClick={fetchStats} style={{ marginTop: '2rem', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', width: '100%' }}>
-      🔄 Опресни статистиката
-    </button>
-  </div>
-)}
+            <div style={{ marginTop: '2rem' }}>
+              <h3 style={{ color: 'white', marginBottom: '1rem' }}>📱 ТОТАЛ по устройства</h3>
+              <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', minWidth: '120px' }}>
+                  <p style={{ color: '#9ca3af' }}>💻 Desktop</p>
+                  <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#8b5cf6' }}>{stats.deviceStats?.desktop || 0}</p>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', minWidth: '120px' }}>
+                  <p style={{ color: '#9ca3af' }}>📱 Mobile</p>
+                  <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ec4899' }}>{stats.deviceStats?.mobile || 0}</p>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', minWidth: '120px' }}>
+                  <p style={{ color: '#9ca3af' }}>📟 Tablet</p>
+                  <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#14b8a6' }}>{stats.deviceStats?.tablet || 0}</p>
+                </div>
+              </div>
+            </div>
+
+            <button onClick={fetchStats} style={{ marginTop: '2rem', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', width: '100%' }}>
+              🔄 Опресни статистиката
+            </button>
+          </div>
+        )}
 
         {activeTab === 'music' && (
           <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem' }}>
