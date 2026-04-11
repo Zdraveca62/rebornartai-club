@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
@@ -8,7 +8,6 @@ export default function Home() {
   const [visitCount, setVisitCount] = useState(null);
   const [isNew, setIsNew] = useState(true);
   const [showBanner, setShowBanner] = useState(false);
-  const hasTracked = useRef(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -18,9 +17,13 @@ export default function Home() {
       return;
     }
     
-    if (hasTracked.current) return;
-    hasTracked.current = true;
-
+    // Проверка дали вече е броено в ТАЗИ СЕСИЯ (sessionStorage)
+    const hasTrackedInSession = sessionStorage.getItem('visit_tracked');
+    if (hasTrackedInSession) {
+      console.log('⏭️ Вече е броено в тази сесия, пропускам');
+      return;
+    }
+    
     const trackVisitor = async () => {
       try {
         console.log('📡 Започва проследяване...');
@@ -51,6 +54,9 @@ export default function Home() {
         
         const result = await response.json();
         console.log('📊 Резултат:', result);
+        
+        // Запазваме в sessionStorage, че вече е броено
+        sessionStorage.setItem('visit_tracked', 'true');
         
         setVisitCount(result.visitCount);
         setIsNew(result.isNew);
