@@ -21,6 +21,17 @@ const formatMinutes = (seconds) => {
   return Math.floor(seconds / 60);
 };
 
+// Функция за получаване на текущия ден и час (Ирландска часова зона)
+const getCurrentDateTime = () => {
+  const now = new Date();
+  const irishNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
+  const day = irishNow.getDate();
+  const month = irishNow.toLocaleString('default', { month: 'long' });
+  const hours = irishNow.getHours().toString().padStart(2, '0');
+  const minutes = irishNow.getMinutes().toString().padStart(2, '0');
+  return `${day} ${month}, ${hours}:${minutes}`;
+};
+
 export default function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -270,8 +281,8 @@ export default function AdminPanel() {
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}>Локация</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Днес</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Всичко</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Сега ({getCurrentDateTime()})</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Общо</th>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}>Последно</th>
                   </tr>
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
