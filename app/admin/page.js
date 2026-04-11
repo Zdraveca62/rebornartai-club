@@ -76,60 +76,66 @@ export default function AdminPanel() {
   };
 
   const fetchStats = async () => {
-    const res = await fetch('/api/visitors');
-    const data = await res.json();
+  const res = await fetch('/api/visitors');
+  const data = await res.json();
+  
+  const locationMap = new Map();
+  const today = new Date();
+  const todayStr = today.toDateString();
+  
+  if (data.allVisitors) {
+    // Сортираме посетителите (най-новите първи)
+    const sortedVisitors = [...data.allVisitors].sort((a, b) => 
+      new Date(b.last_visit) - new Date(a.last_visit)
+    );
     
-    // Групиране по държава и град
-    const locationMap = new Map();
-    const today = new Date();
-    const todayStr = today.toDateString();
-    
-    if (data.allVisitors) {
-      data.allVisitors.forEach(visitor => {
-        const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}`;
-        const visitDate = new Date(visitor.last_visit).toDateString();
-        const isToday = visitDate === todayStr;
-        const minutesSpent = (visitor.visit_count || 1) * 5;
-        
-        if (!locationMap.has(key)) {
-          locationMap.set(key, {
-            country: visitor.country || 'Unknown',
-            city: visitor.city || 'Unknown',
-            todayVisits: 0,
-            todayMinutes: 0,
-            totalVisits: 0,
-            totalMinutes: 0,
-            lastVisit: visitor.last_visit
-          });
-        }
-        
-        const loc = locationMap.get(key);
-        if (isToday) {
-          loc.todayVisits += (visitor.visit_count || 1);
-          loc.todayMinutes += minutesSpent;
-        }
-        loc.totalVisits += (visitor.visit_count || 1);
-        loc.totalMinutes += minutesSpent;
-        if (new Date(visitor.last_visit) > new Date(loc.lastVisit)) {
-          loc.lastVisit = visitor.last_visit;
-        }
-        locationMap.set(key, loc);
-      });
-    }
-    
-    // Преобразуване в масив и сортиране
-    let locationStats = Array.from(locationMap.values())
-      .sort((a, b) => b.totalVisits - a.totalVisits);
-    
-    const totalMinutes = locationStats.reduce((sum, loc) => sum + loc.totalMinutes, 0);
-    
-    setStats({ 
-      ...data, 
-      totalMinutes,
-      locationStats,
-      currentPage: 1,
-      itemsPerPage: 5
+    sortedVisitors.forEach(visitor => {
+      const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}`;
+      const visitDate = new Date(visitor.last_visit).toDateString();
+      const isToday = visitDate === todayStr;
+      const minutesSpent = (visitor.visit_count || 1) * 5;
+      
+      if (!locationMap.has(key)) {
+        locationMap.set(key, {
+          country: visitor.country || 'Unknown',
+          city: visitor.city || 'Unknown',
+          todayVisits: 0,
+          todayMinutes: 0,
+          totalVisits: 0,
+          totalMinutes: 0,
+          lastVisit: visitor.last_visit
+        });
+      }
+      
+      const loc = locationMap.get(key);
+      if (isToday) {
+        loc.todayVisits += (visitor.visit_count || 1);
+        loc.todayMinutes += minutesSpent;
+      }
+      loc.totalVisits += (visitor.visit_count || 1);
+      loc.totalMinutes += minutesSpent;
+      
+      if (new Date(visitor.last_visit) > new Date(loc.lastVisit)) {
+        loc.lastVisit = visitor.last_visit;
+      }
+      
+      locationMap.set(key, loc);
     });
+  }
+  
+  // Сортиране на финалния масив (най-новите първи)
+  let locationStats = Array.from(locationMap.values())
+    .sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
+  
+  const totalMinutes = locationStats.reduce((sum, loc) => sum + loc.totalMinutes, 0);
+  
+  setStats({ 
+    ...data, 
+    totalMinutes,
+    locationStats,
+    currentPage: 1,
+    itemsPerPage: 5
+  });
   };
 
   const handleAddSong = async (e) => {
