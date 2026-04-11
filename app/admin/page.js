@@ -235,112 +235,72 @@ export default function AdminPanel() {
         </div>
 
         {activeTab === 'stats' && (
-          <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem' }}>
-            
-            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>ОБЩ БРОЙ ВЛИЗАНИЯ В САЙТА</p>
-              <p style={{ fontSize: '3rem', fontWeight: 'bold', color: '#8b5cf6' }}>{stats.totalVisits || 0}</p>
-              <p style={{ color: '#9ca3af', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-                Общо време: <strong style={{ color: '#8b5cf6' }}>{stats.totalMinutes || 0}</strong> минути
-              </p>
-            </div>
+  <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem' }}>
+    
+    <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+      <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>ОБЩ БРОЙ ВЛИЗАНИЯ В САЙТА</p>
+      <p style={{ fontSize: '3rem', fontWeight: 'bold', color: '#8b5cf6' }}>{stats.totalVisits || 0}</p>
+    </div>
 
-            <h3 style={{ color: 'white', marginBottom: '1rem' }}>🌍 Статистика по локации</h3>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', color: 'white' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
-                    <th style={{ padding: '0.5rem', textAlign: 'left' }}>Location</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Днес</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Всичко</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'left' }}>Последно</th>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
-                    <th style={{ padding: '0.5rem', textAlign: 'left' }}></th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>Visits</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>min</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>Visits</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>min</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'left' }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedLocations.length > 0 ? (
-                    paginatedLocations.map((loc, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                        <td style={{ padding: '0.5rem' }}>
-                          {loc.city}, {loc.country}
-                        </td>
-                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.todayVisits || 0}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.todayMinutes || 0}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.totalVisits || 0}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.totalMinutes || 0}</td>
-                        <td style={{ padding: '0.5rem' }}>{formatDate(loc.lastVisit)}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="6" style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af' }}>
-                        Няма данни за посетители
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+    <h3 style={{ color: 'white', marginBottom: '1rem' }}>🌍 Последни посещения</h3>
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', color: 'white' }}>
+        <thead>
+          <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
+            <th style={{ padding: '0.5rem', textAlign: 'left' }}>IP Адрес</th>
+            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Локация</th>
+            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Устройство</th>
+            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Посещения</th>
+            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Последно посещение</th>
+          </tr>
+        </thead>
+        <tbody>
+          {stats.allVisitors && stats.allVisitors.length > 0 ? (
+            stats.allVisitors
+              .sort((a, b) => new Date(b.last_visit) - new Date(a.last_visit))
+              .map((visitor, idx) => (
+                <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                  <td style={{ padding: '0.5rem' }}>{visitor.ip_address || 'Unknown'}</td>
+                  <td style={{ padding: '0.5rem' }}>{visitor.city || 'Unknown'}, {visitor.country || 'Unknown'}</td>
+                  <td style={{ padding: '0.5rem' }}>{visitor.device_type || 'desktop'}</td>
+                  <td style={{ padding: '0.5rem' }}>{visitor.visit_count || 1}</td>
+                  <td style={{ padding: '0.5rem' }}>{formatDate(visitor.last_visit)} (без час)</td>
+                </tr>
+              ))
+          ) : (
+            <tr>
+              <td colSpan="5" style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af' }}>
+                Няма данни за посетители
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
 
-            {/* Пагинация */}
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => goToPage(1)}
-                  disabled={stats.currentPage === 1}
-                  style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: stats.currentPage === 1 ? 'not-allowed' : 'pointer', opacity: stats.currentPage === 1 ? 0.5 : 1 }}
-                >
-                  «
-                </button>
-                {[...Array(totalPages)].map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => goToPage(i + 1)}
-                    style={{ background: stats.currentPage === i + 1 ? '#8b5cf6' : 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer' }}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-                <button
-                  onClick={() => goToPage(totalPages)}
-                  disabled={stats.currentPage === totalPages}
-                  style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: stats.currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: stats.currentPage === totalPages ? 0.5 : 1 }}
-                >
-                  »
-                </button>
-              </div>
-            )}
+    <div style={{ marginTop: '2rem' }}>
+      <h3 style={{ color: 'white', marginBottom: '1rem' }}>📱 ТОТАЛ по устройства</h3>
+      <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', minWidth: '120px' }}>
+          <p style={{ color: '#9ca3af' }}>💻 Desktop</p>
+          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#8b5cf6' }}>{stats.deviceStats?.desktop || 0}</p>
+        </div>
+        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', minWidth: '120px' }}>
+          <p style={{ color: '#9ca3af' }}>📱 Mobile</p>
+          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ec4899' }}>{stats.deviceStats?.mobile || 0}</p>
+        </div>
+        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', minWidth: '120px' }}>
+          <p style={{ color: '#9ca3af' }}>📟 Tablet</p>
+          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#14b8a6' }}>{stats.deviceStats?.tablet || 0}</p>
+        </div>
+      </div>
+    </div>
 
-            <div style={{ marginTop: '2rem' }}>
-              <h3 style={{ color: 'white', marginBottom: '1rem' }}>📱 ТОТАЛ по устройства</h3>
-              <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', minWidth: '120px' }}>
-                  <p style={{ color: '#9ca3af' }}>💻 Desktop</p>
-                  <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#8b5cf6' }}>{stats.deviceStats?.desktop || 0}</p>
-                </div>
-                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', minWidth: '120px' }}>
-                  <p style={{ color: '#9ca3af' }}>📱 Mobile</p>
-                  <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ec4899' }}>{stats.deviceStats?.mobile || 0}</p>
-                </div>
-                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', minWidth: '120px' }}>
-                  <p style={{ color: '#9ca3af' }}>📟 Tablet</p>
-                  <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#14b8a6' }}>{stats.deviceStats?.tablet || 0}</p>
-                </div>
-              </div>
-            </div>
-
-            <button onClick={fetchStats} style={{ marginTop: '2rem', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', width: '100%' }}>
-              🔄 Опресни статистиката
-            </button>
-          </div>
-        )}
+    <button onClick={fetchStats} style={{ marginTop: '2rem', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', width: '100%' }}>
+      🔄 Опресни статистиката
+    </button>
+  </div>
+)}
 
         {activeTab === 'music' && (
           <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem' }}>
