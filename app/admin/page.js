@@ -15,6 +15,12 @@ const formatDate = (dateString) => {
   return `${day}/${month}/${year}`;
 };
 
+// Функция за форматиране на секунди в минути (само цели минути)
+const formatMinutes = (seconds) => {
+  if (!seconds || seconds < 60) return 0;
+  return Math.floor(seconds / 60);
+};
+
 export default function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,7 +31,6 @@ export default function AdminPanel() {
     totalMinutes: 0,
     deviceStats: { desktop: 0, mobile: 0, tablet: 0 }, 
     locationStats: [],
-    allVisitors: [],
     currentPage: 1,
     itemsPerPage: 5
   });
@@ -77,67 +82,87 @@ export default function AdminPanel() {
   };
 
   const fetchStats = async () => {
-    const res = await fetch('/api/visitors');
-    const data = await res.json();
-    
-    // Групиране по държава и град
-    const locationMap = new Map();
-    const today = new Date();
-    const todayStr = today.toDateString();
-    
-    if (data.allVisitors) {
-      // Сортираме посетителите (най-новите първи)
-      const sortedVisitors = [...data.allVisitors].sort((a, b) => 
-        new Date(b.last_visit) - new Date(a.last_visit)
-      );
+    try {
+      // Зареждаме посетителите
+      const visitorsRes = await fetch('/api/visitors');
+      const visitorsData = await visitorsRes.json();
       
-      sortedVisitors.forEach(visitor => {
-        const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}`;
-        const visitDate = new Date(visitor.last_visit).toDateString();
-        const isToday = visitDate === todayStr;
-        const minutesSpent = (visitor.visit_count || 1) * 5;
-        
-        if (!locationMap.has(key)) {
-          locationMap.set(key, {
-            country: visitor.country || 'Unknown',
-            city: visitor.city || 'Unknown',
-            todayVisits: 0,
-            todayMinutes: 0,
-            totalVisits: 0,
-            totalMinutes: 0,
-            lastVisit: visitor.last_visit
-          });
-        }
-        
-        const loc = locationMap.get(key);
-        if (isToday) {
-          loc.todayVisits += (visitor.visit_count || 1);
-          loc.todayMinutes += minutesSpent;
-        }
-        loc.totalVisits += (visitor.visit_count || 1);
-        loc.totalMinutes += minutesSpent;
-        
-        if (new Date(visitor.last_visit) > new Date(loc.lastVisit)) {
-          loc.lastVisit = visitor.last_visit;
-        }
-        
-        locationMap.set(key, loc);
+      // Зареждаме времената на престой
+      const durationRes = await fetch('/api/visit-duration');
+      const durations = await durationRes.json();
+      
+      // Групираме времената по IP адрес
+      const ipDurationMap = new Map();
+      durations.forEach(d => {
+        const ip = d.ip_address;
+        const current = ipDurationMap.get(ip) || 0;
+        ipDurationMap.set(ip, current + d.duration_seconds);
       });
+      
+      // Групиране по държава и град
+      const locationMap = new Map();
+      const today = new Date();
+      const todayStr = today.toDateString();
+      
+      if (visitorsData.allVisitors) {
+        const sortedVisitors = [...visitorsData.allVisitors].sort((a, b) => 
+          new Date(b.last_visit) - new Date(a.last_visit)
+        );
+        
+        sortedVisitors.forEach(visitor => {
+          const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}`;
+          const visitDate = new Date(visitor.last_visit).toDateString();
+          const isToday = visitDate === todayStr;
+          
+          // Взимаме реалното време от visit_duration таблицата
+          const realMinutes = formatMinutes(ipDurationMap.get(visitor.ip_address) || 0);
+          const estimatedMinutes = (visitor.visit_count || 1) * 5;
+          const finalMinutes = realMinutes > 0 ? realMinutes : estimatedMinutes;
+          
+          if (!locationMap.has(key)) {
+            locationMap.set(key, {
+              country: visitor.country || 'Unknown',
+              city: visitor.city || 'Unknown',
+              todayVisits: 0,
+              todayMinutes: 0,
+              totalVisits: 0,
+              totalMinutes: 0,
+              lastVisit: visitor.last_visit
+            });
+          }
+          
+          const loc = locationMap.get(key);
+          if (isToday) {
+            loc.todayVisits += (visitor.visit_count || 1);
+            loc.todayMinutes += finalMinutes;
+          }
+          loc.totalVisits += (visitor.visit_count || 1);
+          loc.totalMinutes += finalMinutes;
+          
+          if (new Date(visitor.last_visit) > new Date(loc.lastVisit)) {
+            loc.lastVisit = visitor.last_visit;
+          }
+          
+          locationMap.set(key, loc);
+        });
+      }
+      
+      // Сортиране на финалния масив (най-новите първи)
+      let locationStats = Array.from(locationMap.values())
+        .sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
+      
+      const totalMinutes = locationStats.reduce((sum, loc) => sum + loc.totalMinutes, 0);
+      
+      setStats({ 
+        ...visitorsData, 
+        totalMinutes,
+        locationStats,
+        currentPage: 1,
+        itemsPerPage: 5
+      });
+    } catch (error) {
+      console.error('Грешка при зареждане на статистика:', error);
     }
-    
-    // Сортиране на финалния масив (най-новите първи)
-    let locationStats = Array.from(locationMap.values())
-      .sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
-    
-    const totalMinutes = locationStats.reduce((sum, loc) => sum + loc.totalMinutes, 0);
-    
-    setStats({ 
-      ...data, 
-      totalMinutes,
-      locationStats,
-      currentPage: 1,
-      itemsPerPage: 5
-    });
   };
 
   const handleAddSong = async (e) => {
@@ -276,7 +301,7 @@ export default function AdminPanel() {
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.totalVisits || 0}</td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.totalMinutes || 0}</td>
                         <td style={{ padding: '0.5rem' }}>{formatDate(loc.lastVisit)}</td>
-                      </tr>
+                      </table>
                     ))
                   ) : (
                     <tr>

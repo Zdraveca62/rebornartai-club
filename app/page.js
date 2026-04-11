@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
@@ -9,9 +9,73 @@ export default function Home() {
   const [isNew, setIsNew] = useState(true);
   const [showBanner, setShowBanner] = useState(false);
   const pathname = usePathname();
+  const startTimeRef = useRef(null);
+  const sessionIdRef = useRef(null);
+  const heartbeatIntervalRef = useRef(null);
 
+  // Генериране на уникален ID за сесията
   useEffect(() => {
-    // НЕ броим посещения в административните страници
+    sessionIdRef.current = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  }, []);
+
+  // Функция за изпращане на времето на престой
+  const sendHeartbeat = async (seconds) => {
+    if (seconds < 60) return; // под 1 минута – не изпращаме
+    
+    try {
+      await fetch('/api/visit-duration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: sessionIdRef.current,
+          durationSeconds: seconds
+        })
+      });
+      console.log(`💓 Heartbeat: ${Math.floor(seconds / 60)} минути`);
+    } catch (err) {
+      console.error('Грешка при heartbeat:', err);
+    }
+  };
+
+  // Започваме засичането при зареждане
+  useEffect(() => {
+    startTimeRef.current = Date.now();
+    
+    // Heartbeat на всяка минута
+    heartbeatIntervalRef.current = setInterval(() => {
+      if (startTimeRef.current) {
+        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        sendHeartbeat(elapsed);
+      }
+    }, 60000); // всяка минута
+    
+    // При излизане от страницата
+    const handleBeforeUnload = () => {
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+      }
+      if (startTimeRef.current) {
+        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        sendHeartbeat(elapsed);
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+      }
+      if (startTimeRef.current) {
+        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        sendHeartbeat(elapsed);
+      }
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
+  // Проследяване на посещенията (съществуващата логика)
+  useEffect(() => {
     if (pathname === '/admin' || pathname === '/admin-login' || pathname.startsWith('/admin')) {
       console.log('⏭️ Пропускане на броене (административна страница)');
       return;
@@ -19,7 +83,6 @@ export default function Home() {
     
     const trackVisitor = async () => {
       try {
-        // Проверка дали е броено в последните 30 минути
         const lastVisit = localStorage.getItem('last_visit_time');
         const now = Date.now();
         const THIRTY_MINUTES = 30 * 60 * 1000;
@@ -31,12 +94,10 @@ export default function Home() {
         
         console.log('📡 Започва проследяване...');
         
-        // ИЗПОЛЗВАМЕ ipapi.co (работи на Vercel, няма CORS проблеми)
         const geoRes = await fetch('https://ipapi.co/json/');
         const geoData = await geoRes.json();
         console.log('📍 Локация (ipapi.co):', geoData);
         
-        // Определяне на устройство
         const userAgent = navigator.userAgent;
         let deviceType = 'desktop';
         if (/mobile|android|iphone|phone/i.test(userAgent)) deviceType = 'mobile';
@@ -59,16 +120,11 @@ export default function Home() {
         console.log('📊 Резултат от API:', result);
         
         if (result.success) {
-          // Запазваме времето на последното посещение
           localStorage.setItem('last_visit_time', now.toString());
-          
           setVisitCount(result.visitCount);
           setIsNew(result.isNew);
           setShowBanner(true);
-          
           setTimeout(() => setShowBanner(false), 5000);
-        } else {
-          console.error('❌ API върна грешка:', result);
         }
       } catch (err) {
         console.error('❌ Грешка при проследяване:', err);
