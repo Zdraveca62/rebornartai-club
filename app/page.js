@@ -14,7 +14,7 @@ export default function Home() {
   const heartbeatIntervalRef = useRef(null);
   const finalTimeSentRef = useRef(false);
 
-  // Генериране на уникален ID за сесията (запазва се в localStorage)
+  // Генериране на уникален ID за сесията
   useEffect(() => {
     let savedSessionId = localStorage.getItem('session_id');
     if (!savedSessionId) {
@@ -39,7 +39,7 @@ export default function Home() {
         body: JSON.stringify({
           sessionId: sessionIdRef.current,
           durationSeconds: seconds,
-          ip: geoData.ip
+          ip: geoData.query
         })
       });
       console.log(`💓 Heartbeat: ${Math.floor(seconds / 60)} минути, ${seconds % 60} секунди`);
@@ -86,67 +86,65 @@ export default function Home() {
   }, []);
 
   // Проследяване на посещенията
-useEffect(() => {
-  // НЕ броим в административните страници
-  if (pathname === '/admin' || pathname === '/admin-login' || pathname.startsWith('/admin')) {
-    console.log('⏭️ Пропускане на броене (административна страница)');
-    return;
-  }
-  
-const trackVisitor = async () => {
-  try {
-    const lastVisit = localStorage.getItem('last_visit_time');
-    const now = Date.now();
-    const TEN_MINUTES = 10 * 60 * 1000;
-    
-    if (lastVisit && (now - parseInt(lastVisit)) < TEN_MINUTES) {
-      console.log('⏭️ Последното посещение е от по-малко от 10 минути, пропускам');
+  useEffect(() => {
+    if (pathname === '/admin' || pathname === '/admin-login' || pathname.startsWith('/admin')) {
+      console.log('⏭️ Пропускане на броене (административна страница)');
       return;
     }
     
-    console.log('📡 Започва проследяване...');
+    const trackVisitor = async () => {
+      try {
+        const lastVisit = localStorage.getItem('last_visit_time');
+        const now = Date.now();
+        const TEN_MINUTES = 10 * 60 * 1000;
+        
+        if (lastVisit && (now - parseInt(lastVisit)) < TEN_MINUTES) {
+          console.log('⏭️ Последното посещение е от по-малко от 10 минути, пропускам');
+          return;
+        }
+        
+        console.log('📡 Започва проследяване...');
+        
+        const geoRes = await fetch('http://ip-api.com/json/');
+        const geoData = await geoRes.json();
+        console.log('📍 Локация (ip-api.com):', geoData);
+        
+        const userAgent = navigator.userAgent;
+        let deviceType = 'desktop';
+        if (/mobile|android|iphone|phone/i.test(userAgent)) deviceType = 'mobile';
+        else if (/tablet|ipad/i.test(userAgent)) deviceType = 'tablet';
+        
+        const response = await fetch('/api/visitors', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ip: geoData.query,
+            country: geoData.country,
+            city: geoData.city,
+            region: geoData.regionName,
+            userAgent: userAgent,
+            deviceType: deviceType,
+            sessionId: sessionIdRef.current
+          })
+        });
+        
+        const result = await response.json();
+        console.log('📊 Резултат от API:', result);
+        
+        if (result.success) {
+          localStorage.setItem('last_visit_time', now.toString());
+          setVisitCount(result.visitCount);
+          setIsNew(result.isNew);
+          setShowBanner(true);
+          setTimeout(() => setShowBanner(false), 5000);
+        }
+      } catch (err) {
+        console.error('❌ Грешка при проследяване:', err);
+      }
+    };
     
-    // Променено на ip-api.com (работи на Vercel)
-    const geoRes = await fetch('http://ip-api.com/json/');
-    const geoData = await geoRes.json();
-    console.log('📍 Локация (ip-api.com):', geoData);
-    
-    const userAgent = navigator.userAgent;
-    let deviceType = 'desktop';
-    if (/mobile|android|iphone|phone/i.test(userAgent)) deviceType = 'mobile';
-    else if (/tablet|ipad/i.test(userAgent)) deviceType = 'tablet';
-    
-    const response = await fetch('/api/visitors', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ip: geoData.query,
-        country: geoData.country,
-        city: geoData.city,
-        region: geoData.regionName,
-        userAgent: userAgent,
-        deviceType: deviceType,
-        sessionId: sessionIdRef.current
-      })
-    });
-    
-    const result = await response.json();
-    console.log('📊 Резултат от API:', result);
-    
-    if (result.success) {
-      localStorage.setItem('last_visit_time', now.toString());
-      setVisitCount(result.visitCount);
-      setIsNew(result.isNew);
-      setShowBanner(true);
-      setTimeout(() => setShowBanner(false), 5000);
-    }
-  } catch (err) {
-    console.error('❌ Грешка при проследяване:', err);
-  }
-};
-  
-  trackVisitor();
-}, [pathname]);
+    trackVisitor();
+  }, [pathname]);
 
   return (
     <div style={{ height: '100vh', overflowY: 'scroll', scrollSnapType: 'y mandatory' }}>
@@ -189,6 +187,7 @@ const trackVisitor = async () => {
         </div>
       )}
       
+      {/* СТРАНИЦА 1 - HOME */}
       <div style={{
         height: '100vh',
         scrollSnapAlign: 'start',
@@ -210,6 +209,7 @@ const trackVisitor = async () => {
         </div>
       </div>
 
+      {/* СТРАНИЦА 2 - AI Творчество */}
       <div style={{
         height: '100vh',
         scrollSnapAlign: 'start',
@@ -233,13 +233,13 @@ const trackVisitor = async () => {
             </div>
           </Link>
           
-<Link href="/ai-videos" style={{ textDecoration: 'none' }}>
-  <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem', cursor: 'pointer', textAlign: 'center', border: '1px solid rgba(236, 72, 153, 0.5)' }}>
-    <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🎬</div>
-    <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '0.5rem' }}>AI Videos</h3>
-    <p style={{ color: '#d1d5db' }}>Видео от AI</p>
-  </div>
-</Link>
+          <Link href="/ai-videos" style={{ textDecoration: 'none' }}>
+            <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem', cursor: 'pointer', textAlign: 'center', border: '1px solid rgba(236, 72, 153, 0.5)' }}>
+              <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🎬</div>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '0.5rem' }}>AI Videos</h3>
+              <p style={{ color: '#d1d5db' }}>Видео от AI</p>
+            </div>
+          </Link>
           
           <Link href="/admin" style={{ textDecoration: 'none' }}>
             <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem', cursor: 'pointer', textAlign: 'center', border: '1px solid rgba(99, 102, 241, 0.5)' }}>
