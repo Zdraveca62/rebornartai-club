@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API</title>
+</head>
+<body>
+    <h1>Тест на API - Reborn Art AI</h1>
+    <button onclick="testAPI()">Изпрати тестова заявка</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testAPI() {
+            document.getElementById('result').innerText = 'Изпращане...';
+            
+            try {
+                const response = await fetch('https://rebornartai.club/api/visitors', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ip: '1.1.1.1',
+                        country: 'Test Country',
+                        city: 'Test City',
+                        region: 'Test Region',
+                        userAgent: 'Test Agent',
+                        deviceType: 'desktop',
+                        sessionId: 'test_' + Date.now()
+                    })
+                });
+                
+                const data = await response.json();
+                document.getElementById('result').innerText = JSON.stringify(data, null, 2);
+            } catch(err) {
+                document.getElementById('result').innerText = 'Грешка: ' + err.message;
+            }
+        }
+    </script>
+</body>
+</html>
