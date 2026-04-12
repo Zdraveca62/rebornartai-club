@@ -4,18 +4,17 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-// Функция за форматиране на дата в DD/MM/YY (без час, Ирландска часова зона)
+// Функция за форматиране на дата в DD/MM/YY
 const formatDate = (dateString) => {
   if (!dateString) return 'Неизвестно';
   const date = new Date(dateString);
-  const irishDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
-  const day = irishDate.getDate().toString().padStart(2, '0');
-  const month = (irishDate.getMonth() + 1).toString().padStart(2, '0');
-  const year = irishDate.getFullYear().toString().slice(-2);
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear().toString().slice(-2);
   return `${day}/${month}/${year}`;
 };
 
-// Функция за форматиране на секунди (показва секунди под 60, минути над 60)
+// Функция за форматиране на секунди
 const formatDuration = (seconds) => {
   if (!seconds || seconds < 0) return '0';
   if (seconds < 60) return `${seconds}s`;
@@ -25,14 +24,13 @@ const formatDuration = (seconds) => {
   return `${minutes}min ${remainingSeconds}s`;
 };
 
-// Функция за получаване на текущия ден и час (Ирландска часова зона)
+// Функция за получаване на текущия ден и час
 const getCurrentDateTime = () => {
   const now = new Date();
-  const irishNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
-  const day = irishNow.getDate();
-  const month = irishNow.toLocaleString('default', { month: 'long' });
-  const hours = irishNow.getHours().toString().padStart(2, '0');
-  const minutes = irishNow.getMinutes().toString().padStart(2, '0');
+  const day = now.getDate();
+  const month = now.toLocaleString('default', { month: 'long' });
+  const hours = now.getHours().toString().padStart(2, '0');
+  const minutes = now.getMinutes().toString().padStart(2, '0');
   return `${day} ${month}, ${hours}:${minutes}`;
 };
 
@@ -53,43 +51,6 @@ export default function AdminPanel() {
   const [status, setStatus] = useState('');
   const router = useRouter();
 
-  // Проверка за токен при зареждане
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = sessionStorage.getItem('admin_token');
-      
-      if (!token) {
-        router.push('/admin-login');
-        return;
-      }
-      
-      try {
-        const res = await fetch('/api/admin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token })
-        });
-        
-        const data = await res.json();
-        
-        if (data.valid) {
-          setIsAuthenticated(true);
-          fetchSongs();
-          fetchStats();
-        } else {
-          sessionStorage.removeItem('admin_token');
-          router.push('/admin-login?error=expired');
-        }
-      } catch (err) {
-        router.push('/admin-login?error=connection');
-      }
-      
-      setIsLoading(false);
-    };
-    
-    checkAuth();
-  }, [router]);
-
   const fetchSongs = async () => {
     const res = await fetch('/api/songs');
     const data = await res.json();
@@ -104,13 +65,12 @@ export default function AdminPanel() {
       const durationRes = await fetch('/api/visit-duration');
       const durations = await durationRes.json();
       
-      // Групираме времената по session_id
-      const sessionDurationMap = new Map();
+      const ipDurationMap = new Map();
       durations.forEach(d => {
-        const sessionId = d.session_id;
-        if (sessionId) {
-          const current = sessionDurationMap.get(sessionId) || 0;
-          sessionDurationMap.set(sessionId, current + d.duration_seconds);
+        const ip = d.ip_address;
+        if (ip) {
+          const current = ipDurationMap.get(ip) || 0;
+          ipDurationMap.set(ip, current + d.duration_seconds);
         }
       });
       
@@ -123,8 +83,7 @@ export default function AdminPanel() {
           const visitISO = new Date(visitor.last_visit).toISOString().split('T')[0];
           const isToday = visitISO === todayISO;
           
-          // Взимаме реалните секунди от session_id
-          const realSeconds = sessionDurationMap.get(visitor.session_id) || 0;
+          const realSeconds = ipDurationMap.get(visitor.ip_address) || 0;
           
           if (!locationMap.has(key)) {
             locationMap.set(key, {
@@ -170,6 +129,42 @@ export default function AdminPanel() {
       console.error('Грешка при зареждане на статистика:', error);
     }
   };
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = sessionStorage.getItem('admin_token');
+      
+      if (!token) {
+        router.push('/admin-login');
+        return;
+      }
+      
+      try {
+        const res = await fetch('/api/admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token })
+        });
+        
+        const data = await res.json();
+        
+        if (data.valid) {
+          setIsAuthenticated(true);
+          await fetchSongs();
+          await fetchStats();
+        } else {
+          sessionStorage.removeItem('admin_token');
+          router.push('/admin-login?error=expired');
+        }
+      } catch (err) {
+        router.push('/admin-login?error=connection');
+      }
+      
+      setIsLoading(false);
+    };
+    
+    checkAuth();
+  }, [router]);
 
   const handleAddSong = async (e) => {
     e.preventDefault();

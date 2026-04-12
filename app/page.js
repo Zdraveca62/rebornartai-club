@@ -14,9 +14,15 @@ export default function Home() {
   const heartbeatIntervalRef = useRef(null);
   const finalTimeSentRef = useRef(false);
 
-  // Генериране на уникален ID за сесията
+  // Генериране на уникален ID за сесията (запазва се в localStorage)
   useEffect(() => {
-    sessionIdRef.current = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    let savedSessionId = localStorage.getItem('session_id');
+    if (!savedSessionId) {
+      savedSessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('session_id', savedSessionId);
+    }
+    sessionIdRef.current = savedSessionId;
+    console.log('🆔 Session ID (запазен):', sessionIdRef.current);
   }, []);
 
   // Функция за изпращане на времето на престой
@@ -38,7 +44,7 @@ export default function Home() {
       });
       console.log(`💓 Heartbeat: ${Math.floor(seconds / 60)} минути, ${seconds % 60} секунди`);
     } catch (err) {
-      console.error('Гречка при изпращане на време:', err);
+      console.error('Грешка при изпращане на време:', err);
     }
   };
 
@@ -98,10 +104,10 @@ export default function Home() {
         }
         
         console.log('📡 Започва проследяване...');
+        console.log('🆔 Session ID:', sessionIdRef.current);
         
         const geoRes = await fetch('https://ipapi.co/json/');
         const geoData = await geoRes.json();
-        console.log('📍 Локация (ipapi.co):', geoData);
         
         const userAgent = navigator.userAgent;
         let deviceType = 'desktop';

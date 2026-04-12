@@ -44,8 +44,9 @@ export async function GET() {
     
     if (error) throw error;
     
-    return NextResponse.json(data);
+    return NextResponse.json(data || []);
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('❌ Грешка при GET:', error);
+    return NextResponse.json([]); // Връщаме празен масив при грешка
   }
 }

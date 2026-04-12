@@ -10,6 +10,8 @@ export async function POST(request) {
   try {
     const { token } = await request.json();
     
+    console.log('🔐 Проверка на токен:', token ? 'получен' : 'липсва');
+    
     if (!token) {
       return NextResponse.json({ valid: false, error: 'Липсва токен' });
     }
@@ -27,18 +29,16 @@ export async function POST(request) {
     }
     
     if (!data || !data.admin_token) {
+      console.error('Няма запис в admin_settings');
       return NextResponse.json({ valid: false, error: 'Няма конфигуриран токен' });
     }
     
     const isValid = (token === data.admin_token);
+    console.log('🔐 Токенът е', isValid ? 'валиден' : 'невалиден');
     
     return NextResponse.json({ valid: isValid });
   } catch (error) {
     console.error('Грешка:', error);
     return NextResponse.json({ valid: false, error: error.message });
   }
-}
-
-export async function GET() {
-  return NextResponse.json({ error: 'Методът GET не се поддържа. Използвайте POST.' }, { status: 405 });
 }
