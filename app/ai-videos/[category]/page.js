@@ -10,7 +10,6 @@ export default function CategoryVideosPage() {
   const [loading, setLoading] = useState(true);
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [showDescription, setShowDescription] = useState(false);
-  const [imageErrors, setImageErrors] = useState({});
 
   const categoryLabels = {
     impressions: { title: '🎹 Видео Импресии', icon: '🎹', color: '#8b5cf6' },
@@ -39,14 +38,8 @@ export default function CategoryVideosPage() {
   };
 
   const getImageUrl = (video) => {
-    if (imageErrors[video.id]) {
-      return `https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`;
-    }
-    return `https://img.youtube.com/vi/${video.youtube_id}/maxresdefault.jpg`;
-  };
-
-  const handleImageError = (videoId) => {
-    setImageErrors(prev => ({ ...prev, [videoId]: true }));
+    // Директно използваме hqdefault.jpg (работи за всички видеа)
+    return `https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`;
   };
 
   const handleVideoClick = (video) => {
@@ -105,7 +98,6 @@ export default function CategoryVideosPage() {
                 src={getImageUrl(video)} 
                 alt={video.title}
                 style={{ width: '100%', height: 'auto', borderRadius: '12px', marginBottom: '1rem' }}
-                onError={() => handleImageError(video.id)}
               />
               <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'white', marginBottom: '1rem' }}>{video.title}</h3>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>

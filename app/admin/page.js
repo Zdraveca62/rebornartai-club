@@ -14,16 +14,6 @@ const formatDate = (dateString) => {
   return `${day}/${month}/${year}`;
 };
 
-// Функция за форматиране на секунди
-const formatDuration = (seconds) => {
-  if (!seconds || seconds < 0) return '0';
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  if (remainingSeconds === 0) return `${minutes}min`;
-  return `${minutes}min ${remainingSeconds}s`;
-};
-
 // Функция за получаване на текущия ден и час
 const getCurrentDateTime = () => {
   const now = new Date();
@@ -32,6 +22,16 @@ const getCurrentDateTime = () => {
   const hours = now.getHours().toString().padStart(2, '0');
   const minutes = now.getMinutes().toString().padStart(2, '0');
   return `${day} ${month}, ${hours}:${minutes}`;
+};
+
+// Функция за форматиране на секунди
+const formatDuration = (seconds) => {
+  if (!seconds || seconds < 0) return '0';
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  if (remainingSeconds === 0) return `${minutes}min`;
+  return `${minutes}min ${remainingSeconds}s`;
 };
 
 export default function AdminPanel() {
@@ -55,6 +55,29 @@ export default function AdminPanel() {
   const [videosCurrentPage, setVideosCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
   const router = useRouter();
+
+  // Функция за форматиране на време (секунди → часове/минути/секунди)
+const formatDuration = (totalSeconds) => {
+  if (!totalSeconds || totalSeconds < 0) return '0';
+  
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  
+  if (hours > 0) {
+    if (minutes > 0 && seconds > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `${hours}h ${minutes}m`;
+    if (seconds > 0) return `${hours}h ${seconds}s`;
+    return `${hours}h`;
+  }
+  
+  if (minutes > 0) {
+    if (seconds > 0) return `${minutes}m ${seconds}s`;
+    return `${minutes}m`;
+  }
+  
+  return `${seconds}s`;
+};
 
   const fetchSongs = async () => {
     const res = await fetch('/api/songs');
@@ -333,7 +356,7 @@ export default function AdminPanel() {
               <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>ОБЩ БРОЙ ВЛИЗАНИЯ В САЙТА</p>
               <p style={{ fontSize: '3rem', fontWeight: 'bold', color: '#8b5cf6' }}>{stats.totalVisits || 0}</p>
               <p style={{ color: '#9ca3af', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-                Общо време: <strong style={{ color: '#8b5cf6' }}>{formatDuration(stats.totalSeconds || 0)}</strong>
+              Общо време: <strong style={{ color: '#8b5cf6' }}>{formatDuration(stats.totalSeconds || 0)}</strong>
               </p>
             </div>
 
@@ -343,7 +366,7 @@ export default function AdminPanel() {
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}>Локация</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Сега ({getCurrentDateTime()})</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Днес({getCurrentDateTime()})</th>
                     <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Общо</th>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}>Последно</th>
                   </tr>
@@ -361,11 +384,8 @@ export default function AdminPanel() {
                     paginatedLocations.map((loc, idx) => (
                       <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                         <td style={{ padding: '0.5rem' }}>{loc.city}, {loc.country}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.todayVisits || 0}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{formatDuration(loc.todaySeconds || 0)}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.totalVisits || 0}</td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>{formatDuration(loc.totalSeconds || 0)}</td>
-                        <td style={{ padding: '0.5rem' }}>{formatDate(loc.lastVisit)}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{formatDuration(loc.totalSeconds || 0)}</td>
                       </tr>
                     ))
                   ) : (
