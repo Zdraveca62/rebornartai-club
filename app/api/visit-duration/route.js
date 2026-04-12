@@ -10,7 +10,6 @@ export async function POST(request) {
   try {
     const { sessionId, durationSeconds, ip } = await request.json();
     
-    // Ако IP не е подаден, взимаме от хедърите
     let finalIp = ip;
     if (!finalIp || finalIp === '0.0.0.0') {
       finalIp = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';

@@ -21,7 +21,7 @@ export default function Home() {
 
   // Функция за изпращане на времето на престой
   const sendDuration = async (seconds, isFinal = false) => {
-    if (seconds < 30 && !isFinal) return; // под 30 секунди – не изпращаме (освен ако не е финално)
+    if (seconds < 15 && !isFinal) return;
     
     try {
       const geoRes = await fetch('https://ipapi.co/json/');
@@ -38,7 +38,7 @@ export default function Home() {
       });
       console.log(`💓 Heartbeat: ${Math.floor(seconds / 60)} минути, ${seconds % 60} секунди`);
     } catch (err) {
-      console.error('Грешка при изпращане на време:', err);
+      console.error('Гречка при изпращане на време:', err);
     }
   };
 
@@ -46,15 +46,13 @@ export default function Home() {
   useEffect(() => {
     startTimeRef.current = Date.now();
     
-    // Heartbeat на всяка минута
     heartbeatIntervalRef.current = setInterval(() => {
       if (startTimeRef.current) {
         const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
         sendDuration(elapsed);
       }
-    }, 15000); // петнадесет секунди
+    }, 15000);
     
-    // При излизане от страницата
     const handleBeforeUnload = () => {
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
@@ -92,10 +90,10 @@ export default function Home() {
       try {
         const lastVisit = localStorage.getItem('last_visit_time');
         const now = Date.now();
-        const THIRTY_MINUTES = 10 * 60 * 1000;
+        const TEN_MINUTES = 10 * 60 * 1000;
         
-        if (lastVisit && (now - parseInt(lastVisit)) < THIRTY_MINUTES) {
-          console.log('⏭️ Последното посещение е от по-малко от 30 минути, пропускам');
+        if (lastVisit && (now - parseInt(lastVisit)) < TEN_MINUTES) {
+          console.log('⏭️ Последното посещение е от по-малко от 10 минути, пропускам');
           return;
         }
         
@@ -183,7 +181,6 @@ export default function Home() {
         </div>
       )}
       
-      {/* СТРАНИЦА 1 - HOME */}
       <div style={{
         height: '100vh',
         scrollSnapAlign: 'start',
@@ -205,7 +202,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* СТРАНИЦА 2 - AI Творчество */}
       <div style={{
         height: '100vh',
         scrollSnapAlign: 'start',

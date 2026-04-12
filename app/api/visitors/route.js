@@ -52,9 +52,9 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const { ip, country, city, region, userAgent, deviceType } = await request.json();
+    const { ip, country, city, region, userAgent, deviceType, sessionId } = await request.json();
     
-    console.log('📱 Получени данни:', { ip, country, city, deviceType });
+    console.log('📱 Получени данни:', { ip, country, city, deviceType, sessionId });
     
     const { data: existing } = await supabase
       .from('visitors')
@@ -77,7 +77,8 @@ export async function POST(request) {
           city, 
           region, 
           user_agent: userAgent,
-          device_type: deviceType
+          device_type: deviceType,
+          session_id: sessionId
         })
         .eq('id', existing.id);
       
@@ -97,6 +98,7 @@ export async function POST(request) {
         region,
         user_agent: userAgent,
         device_type: deviceType,
+        session_id: sessionId,
         visit_count: 1,
         first_visit: now,
         last_visit: now,

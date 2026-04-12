@@ -104,31 +104,27 @@ export default function AdminPanel() {
       const durationRes = await fetch('/api/visit-duration');
       const durations = await durationRes.json();
       
-      const ipDurationMap = new Map();
+      // Групираме времената по session_id
+      const sessionDurationMap = new Map();
       durations.forEach(d => {
-        const ip = d.ip_address;
-        const current = ipDurationMap.get(ip) || 0;
-        ipDurationMap.set(ip, current + d.duration_seconds);
+        const sessionId = d.session_id;
+        if (sessionId) {
+          const current = sessionDurationMap.get(sessionId) || 0;
+          sessionDurationMap.set(sessionId, current + d.duration_seconds);
+        }
       });
       
       const locationMap = new Map();
-      
-      // Използваме ISO дата за сравнение (независима от часова зона)
       const todayISO = new Date().toISOString().split('T')[0];
       
       if (visitorsData.allVisitors) {
-        const sortedVisitors = [...visitorsData.allVisitors].sort((a, b) => 
-          new Date(b.last_visit) - new Date(a.last_visit)
-        );
-        
-        sortedVisitors.forEach(visitor => {
+        visitorsData.allVisitors.forEach(visitor => {
           const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}`;
-          
-          // Сравнение на дати (само ден, месец, година) в UTC
           const visitISO = new Date(visitor.last_visit).toISOString().split('T')[0];
           const isToday = visitISO === todayISO;
           
-          const realSeconds = ipDurationMap.get(visitor.ip_address) || 0;
+          // Взимаме реалните секунди от session_id
+          const realSeconds = sessionDurationMap.get(visitor.session_id) || 0;
           
           if (!locationMap.has(key)) {
             locationMap.set(key, {
@@ -287,7 +283,7 @@ export default function AdminPanel() {
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}>Локация</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">({getCurrentDateTime()})</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Сега ({getCurrentDateTime()})</th>
                     <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Общо</th>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}>Последно</th>
                   </tr>
