@@ -93,7 +93,16 @@ export default function CategoryVideosPage() {
                 src={video.cover_url} 
                 alt={video.title}
                 style={{ width: '100%', height: 'auto', borderRadius: '12px', marginBottom: '1rem' }}
-                onError={(e) => e.target.src = 'https://via.placeholder.com/250x150?text=No+Image'}
+              onError={(e) => {
+              // Ако maxresdefault.jpg не се зареди, опитай със стандартен hqdefault.jpg
+              if (!e.target.src.includes('hqdefault')) {
+               e.target.src = `https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`;
+              } else {
+              // Ако и hqdefault.jpg не успее, покажи placeholder
+               e.target.onerror = null;
+               e.target.src = 'https://via.placeholder.com/250x150?text=No+Image';
+                      }
+                  }}
               />
               <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'white', marginBottom: '1rem' }}>{video.title}</h3>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
