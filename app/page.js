@@ -86,65 +86,66 @@ export default function Home() {
   }, []);
 
   // Проследяване на посещенията
-  useEffect(() => {
-    if (pathname === '/admin' || pathname === '/admin-login' || pathname.startsWith('/admin')) {
-      console.log('⏭️ Пропускане на броене (административна страница)');
-      return;
-    }
-    
-    const trackVisitor = async () => {
-      try {
-        const lastVisit = localStorage.getItem('last_visit_time');
-        const now = Date.now();
-        const TEN_MINUTES = 10 * 60 * 1000;
-        
-        if (lastVisit && (now - parseInt(lastVisit)) < TEN_MINUTES) {
-          console.log('⏭️ Последното посещение е от по-малко от 10 минути, пропускам');
-          return;
-        }
-        
-        console.log('📡 Започва проследяване...');
-        console.log('🆔 Session ID:', sessionIdRef.current);
-        
-        const geoRes = await fetch('https://ipapi.co/json/');
-        const geoData = await geoRes.json();
-        
-        const userAgent = navigator.userAgent;
-        let deviceType = 'desktop';
-        if (/mobile|android|iphone|phone/i.test(userAgent)) deviceType = 'mobile';
-        else if (/tablet|ipad/i.test(userAgent)) deviceType = 'tablet';
-        
-        const response = await fetch('/api/visitors', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ip: geoData.ip,
-            country: geoData.country_name,
-            city: geoData.city,
-            region: geoData.region,
-            userAgent: userAgent,
-            deviceType: deviceType,
-            sessionId: sessionIdRef.current
-          })
-        });
-        
-        const result = await response.json();
-        console.log('📊 Резултат от API:', result);
-        
-        if (result.success) {
-          localStorage.setItem('last_visit_time', now.toString());
-          setVisitCount(result.visitCount);
-          setIsNew(result.isNew);
-          setShowBanner(true);
-          setTimeout(() => setShowBanner(false), 5000);
-        }
-      } catch (err) {
-        console.error('❌ Грешка при проследяване:', err);
+useEffect(() => {
+  // НЕ броим в административните страници
+  if (pathname === '/admin' || pathname === '/admin-login' || pathname.startsWith('/admin')) {
+    console.log('⏭️ Пропускане на броене (административна страница)');
+    return;
+  }
+  
+  const trackVisitor = async () => {
+    try {
+      // Проверка за 10 минути
+      const lastVisit = localStorage.getItem('last_visit_time');
+      const now = Date.now();
+      const TEN_MINUTES = 10 * 60 * 1000;
+      
+      if (lastVisit && (now - parseInt(lastVisit)) < TEN_MINUTES) {
+        console.log('⏭️ Последното посещение е от по-малко от 10 минути, пропускам');
+        return;
       }
-    };
-    
-    trackVisitor();
-  }, [pathname]);
+      
+      console.log('📡 Започва проследяване...');
+      
+      const geoRes = await fetch('https://ipapi.co/json/');
+      const geoData = await geoRes.json();
+      
+      const userAgent = navigator.userAgent;
+      let deviceType = 'desktop';
+      if (/mobile|android|iphone|phone/i.test(userAgent)) deviceType = 'mobile';
+      else if (/tablet|ipad/i.test(userAgent)) deviceType = 'tablet';
+      
+      const response = await fetch('/api/visitors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ip: geoData.ip,
+          country: geoData.country_name,
+          city: geoData.city,
+          region: geoData.region,
+          userAgent: userAgent,
+          deviceType: deviceType,
+          sessionId: sessionIdRef.current
+        })
+      });
+      
+      const result = await response.json();
+      console.log('📊 Резултат от API:', result);
+      
+      if (result.success) {
+        localStorage.setItem('last_visit_time', now.toString());
+        setVisitCount(result.visitCount);
+        setIsNew(result.isNew);
+        setShowBanner(true);
+        setTimeout(() => setShowBanner(false), 5000);
+      }
+    } catch (err) {
+      console.error('❌ Грешка при проследяване:', err);
+    }
+  };
+  
+  trackVisitor();
+}, [pathname]);
 
   return (
     <div style={{ height: '100vh', overflowY: 'scroll', scrollSnapType: 'y mandatory' }}>
