@@ -231,13 +231,13 @@ export default function Home() {
             </div>
           </Link>
           
-          <Link href="/ai-videos" style={{ textDecoration: 'none' }}>
-            <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem', cursor: 'pointer', textAlign: 'center', border: '1px solid rgba(236, 72, 153, 0.5)' }}>
-              <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🎬</div>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '0.5rem' }}>AI Videos</h3>
-              <p style={{ color: '#d1d5db' }}>Видео от AI</p>
-            </div>
-          </Link>
+<Link href="/ai-videos" style={{ textDecoration: 'none' }}>
+  <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem', cursor: 'pointer', textAlign: 'center', border: '1px solid rgba(236, 72, 153, 0.5)' }}>
+    <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🎬</div>
+    <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '0.5rem' }}>AI Videos</h3>
+    <p style={{ color: '#d1d5db' }}>Видео от AI</p>
+  </div>
+</Link>
           
           <Link href="/admin" style={{ textDecoration: 'none' }}>
             <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem', cursor: 'pointer', textAlign: 'center', border: '1px solid rgba(99, 102, 241, 0.5)' }}>
