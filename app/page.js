@@ -28,7 +28,7 @@ export default function Home() {
     if (seconds < 15 && !isFinal) return;
     
     try {
-      const geoRes = await fetch('https://ipapi.co/json/');
+      const geoRes = await fetch('http://ip-api.com/json/');
       const geoData = await geoRes.json();
       
       await fetch('/api/visit-duration', {
@@ -37,7 +37,7 @@ export default function Home() {
         body: JSON.stringify({
           sessionId: sessionIdRef.current,
           durationSeconds: seconds,
-          ip: geoData.ip
+          ip: geoData.query
         })
       });
       console.log(`💓 Heartbeat: ${Math.floor(seconds / 60)} минути, ${seconds % 60} секунди`);
@@ -101,9 +101,9 @@ export default function Home() {
         
         console.log('📡 Започва проследяване...');
         
-        const geoRes = await fetch('https://ipapi.co/json/');
+        const geoRes = await fetch('http://ip-api.com/json/');
         const geoData = await geoRes.json();
-        console.log('📍 Локация (ipapi.co):', geoData);
+        console.log('📍 Локация (ip-api.com):', geoData);
         
         const userAgent = navigator.userAgent;
         let deviceType = 'desktop';
@@ -114,10 +114,10 @@ export default function Home() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ip: geoData.ip,
-            country: geoData.country_name,
+            ip: geoData.query,
+            country: geoData.country,
             city: geoData.city,
-            region: geoData.region,
+            region: geoData.regionName,
             userAgent: userAgent,
             deviceType: deviceType,
             sessionId: sessionIdRef.current
