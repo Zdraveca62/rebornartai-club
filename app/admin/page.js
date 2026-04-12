@@ -49,12 +49,15 @@ export default function AdminPanel() {
   });
   const [newSong, setNewSong] = useState({ title: '', youtubeId: '', lyrics: '', language: 'bg' });
   const [status, setStatus] = useState('');
+  const [songsCurrentPage, setSongsCurrentPage] = useState(1);
+  const [songsPerPage] = useState(5);
   const router = useRouter();
 
   const fetchSongs = async () => {
     const res = await fetch('/api/songs');
     const data = await res.json();
-    setSongs(data);
+    const sortedSongs = data.sort((a, b) => b.id - a.id);
+    setSongs(sortedSongs);
   };
 
   const fetchStats = async () => {
@@ -208,6 +211,13 @@ export default function AdminPanel() {
     setStats(prev => ({ ...prev, currentPage: page }));
   };
 
+  // Общ списък с песни (без разделение по езици)
+  const totalSongsPages = Math.ceil(songs.length / songsPerPage);
+  const paginatedSongs = songs.slice(
+    (songsCurrentPage - 1) * songsPerPage,
+    songsCurrentPage * songsPerPage
+  );
+
   if (isLoading) {
     return (
       <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e1b4b, #000000, #4c1d95)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -349,62 +359,71 @@ export default function AdminPanel() {
         )}
 
         {activeTab === 'music' && (
-          <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem' }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '1rem' }}>🎵 Добави нова песен</h2>
-            
-            <form onSubmit={handleAddSong}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Заглавие:</label>
-                <input type="text" placeholder="Заглавие на песента" value={newSong.title} onChange={(e) => setNewSong({...newSong, title: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
-              </div>
+  <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem' }}>
+    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '1rem' }}>🎵 Добави нова песен</h2>
+    
+    <form onSubmit={handleAddSong}>
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Заглавие:</label>
+        <input type="text" placeholder="Заглавие на песента" value={newSong.title} onChange={(e) => setNewSong({...newSong, title: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
+      </div>
 
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>YouTube ID:</label>
-                <input type="text" placeholder="напр. uxSIvsoWIH8" value={newSong.youtubeId} onChange={(e) => setNewSong({...newSong, youtubeId: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
-                <p style={{ color: '#9ca3af', fontSize: '0.75rem', marginTop: '0.25rem' }}>Вземи ID от URL: https://youtube.com/watch?v=<strong>ТУК Е ID</strong></p>
-              </div>
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>YouTube ID:</label>
+        <input type="text" placeholder="напр. uxSIvsoWIH8" value={newSong.youtubeId} onChange={(e) => setNewSong({...newSong, youtubeId: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
+        <p style={{ color: '#9ca3af', fontSize: '0.75rem', marginTop: '0.25rem' }}>Вземи ID от URL: https://youtube.com/watch?v=<strong>ТУК Е ID</strong></p>
+      </div>
 
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Текст (lyrics):</label>
-                <textarea placeholder="Текст на песента..." value={newSong.lyrics} onChange={(e) => setNewSong({...newSong, lyrics: e.target.value})} required rows="6" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
-              </div>
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Текст (lyrics):</label>
+        <textarea placeholder="Текст на песента..." value={newSong.lyrics} onChange={(e) => setNewSong({...newSong, lyrics: e.target.value})} required rows="6" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
+      </div>
 
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Език:</label>
-                <select value={newSong.language} onChange={(e) => setNewSong({...newSong, language: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }}>
-                  <option value="bg">🇧🇬 Български</option>
-                  <option value="en">🇬🇧 English</option>
-                </select>
-              </div>
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Език:</label>
+        <select value={newSong.language} onChange={(e) => setNewSong({...newSong, language: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }}>
+          <option value="bg">🇧🇬 Български</option>
+          <option value="en">🇬🇧 English</option>
+        </select>
+      </div>
 
-              <button type="submit" style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.75rem 2rem', borderRadius: '8px', cursor: 'pointer' }}>+ Добави песен</button>
-            </form>
-            
-            {status && <p style={{ marginTop: '1rem', color: '#8b5cf6' }}>{status}</p>}
-            
-            <div style={{ marginTop: '2rem' }}>
-              <h3 style={{ color: 'white', marginBottom: '1rem' }}>📋 Съществуващи песни</h3>
-              {songs.length === 0 ? (
-                <p style={{ color: '#9ca3af' }}>Няма добавени песни</p>
-              ) : (
-                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                  {songs.filter(s => s.language === 'bg').map(song => (
-                    <div key={song.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                      <span style={{ color: 'white' }}>🇧🇬 {song.title}</span>
-                      <button onClick={() => handleDeleteSong(song.id)} style={{ background: 'rgba(255,0,0,0.3)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer' }}>Изтрий</button>
-                    </div>
-                  ))}
-                  {songs.filter(s => s.language === 'en').map(song => (
-                    <div key={song.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                      <span style={{ color: 'white' }}>🇬🇧 {song.title}</span>
-                      <button onClick={() => handleDeleteSong(song.id)} style={{ background: 'rgba(255,0,0,0.3)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer' }}>Delete</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+      <button type="submit" style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.75rem 2rem', borderRadius: '8px', cursor: 'pointer' }}>+ Добави песен</button>
+    </form>
+    
+    {status && <p style={{ marginTop: '1rem', color: '#8b5cf6' }}>{status}</p>}
+    
+    <div style={{ marginTop: '2rem' }}>
+      <h3 style={{ color: 'white', marginBottom: '1rem' }}>
+        📋 Съществуващи песни ({songs.length})
+      </h3>
+      
+      {paginatedSongs.length === 0 ? (
+        <p style={{ color: '#9ca3af' }}>Няма добавени песни</p>
+      ) : (
+        paginatedSongs.map(song => (
+          <div key={song.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+            <span style={{ color: 'white' }}>
+              {song.language === 'bg' ? '🇧🇬' : '🇬🇧'} {song.title}
+            </span>
+            <button onClick={() => handleDeleteSong(song.id)} style={{ background: 'rgba(255,0,0,0.3)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer' }}>
+              {song.language === 'bg' ? 'Изтрий' : 'Delete'}
+            </button>
           </div>
-        )}
+        ))
+      )}
+      
+      {totalSongsPages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+          <button onClick={() => setSongsCurrentPage(1)} disabled={songsCurrentPage === 1} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: songsCurrentPage === 1 ? 'not-allowed' : 'pointer', opacity: songsCurrentPage === 1 ? 0.5 : 1 }}>«</button>
+          {[...Array(totalSongsPages)].map((_, i) => (
+            <button key={i} onClick={() => setSongsCurrentPage(i + 1)} style={{ background: songsCurrentPage === i + 1 ? '#8b5cf6' : 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer' }}>{i + 1}</button>
+          ))}
+          <button onClick={() => setSongsCurrentPage(totalSongsPages)} disabled={songsCurrentPage === totalSongsPages} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: songsCurrentPage === totalSongsPages ? 'not-allowed' : 'pointer', opacity: songsCurrentPage === totalSongsPages ? 0.5 : 1 }}>»</button>
+        </div>
+      )}
+    </div>
+  </div>
+)}
 
         {activeTab === 'videos' && (
           <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem' }}>
