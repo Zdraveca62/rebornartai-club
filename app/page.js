@@ -28,7 +28,7 @@ export default function Home() {
     if (seconds < 15 && !isFinal) return;
     
     try {
-      const geoRes = await fetch('https://ip-api.com/json/');
+      const geoRes = await fetch('/api/proxy-geo');
       const geoData = await geoRes.json();
       
       await fetch('/api/visit-duration', {
@@ -101,7 +101,7 @@ export default function Home() {
         
         console.log('📡 Започва проследяване...');
         
-        const geoRes = await fetch('https://ip-api.com/json/');
+        const geoRes = await fetch('/api/proxy-geo');
         const geoData = await geoRes.json();
         console.log('📍 Локация (ip-api.com):', geoData);
         
