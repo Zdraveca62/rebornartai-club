@@ -10,6 +10,7 @@ export default function CategoryVideosPage() {
   const [loading, setLoading] = useState(true);
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [showDescription, setShowDescription] = useState(false);
+  const [imageErrors, setImageErrors] = useState({});
 
   const categoryLabels = {
     impressions: { title: '🎹 Видео Импресии', icon: '🎹', color: '#8b5cf6' },
@@ -35,6 +36,17 @@ export default function CategoryVideosPage() {
       console.error('Грешка при зареждане на видеа:', error);
       setLoading(false);
     }
+  };
+
+  const handleImageError = (videoId) => {
+    setImageErrors(prev => ({ ...prev, [videoId]: true }));
+  };
+
+  const getImageUrl = (video) => {
+    if (imageErrors[video.id]) {
+      return `https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`;
+    }
+    return video.cover_url || `https://img.youtube.com/vi/${video.youtube_id}/maxresdefault.jpg`;
   };
 
   const handleVideoClick = (video) => {
@@ -90,20 +102,11 @@ export default function CategoryVideosPage() {
             onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
             onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
               <img 
-  src={video.cover_url} 
-  alt={video.title}
-  style={{ width: '100%', height: 'auto', borderRadius: '12px', marginBottom: '1rem' }}
-  onError={(e) => {
-    // Ако maxresdefault.jpg не се зареди, опитай със стандартен hqdefault.jpg
-    if (!e.target.src.includes('hqdefault')) {
-      e.target.src = `https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`;
-    } else {
-      // Ако и hqdefault.jpg не успее, покажи placeholder
-      e.target.onerror = null;
-      e.target.src = 'https://via.placeholder.com/250x150?text=No+Image';
-    }
-  }}
-/>
+                src={getImageUrl(video)} 
+                alt={video.title}
+                style={{ width: '100%', height: 'auto', borderRadius: '12px', marginBottom: '1rem' }}
+                onError={() => handleImageError(video.id)}
+              />
               <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'white', marginBottom: '1rem' }}>{video.title}</h3>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                 <button 
