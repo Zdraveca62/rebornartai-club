@@ -1,7 +1,4 @@
 'use client';
-'use client';
-
-// FORCE REDEPLOY - FIX VISITOR TRACKING - 2026-04-12
 
 import { useEffect, useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
