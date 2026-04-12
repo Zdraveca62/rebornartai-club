@@ -55,7 +55,7 @@ export default function AdminPanel() {
   const [videos, setVideos] = useState([]);
   const [stats, setStats] = useState({ 
     totalVisits: 0, 
-    totalMinutes: 0,
+    totalSeconds: 0,
     deviceStats: { desktop: 0, mobile: 0, tablet: 0 }, 
     locationStats: [],
     currentPage: 1,
@@ -88,71 +88,66 @@ export default function AdminPanel() {
       const visitorsRes = await fetch('/api/visitors');
       const visitorsData = await visitorsRes.json();
       
-      console.log('📊 Данни от API:', visitorsData);
+      const durationRes = await fetch('/api/visit-duration');
+      const durations = await durationRes.json();
       
-      // Вземете allVisitors масива директно
-      const allVisitors = visitorsData.allVisitors || [];
-      
-      // Изчислете общ брой посещения
-      const totalVisits = allVisitors.reduce((sum, v) => sum + (v.visit_count || 1), 0);
-      
-      // Изчислете общо време (5 минути на посещение)
-      const totalMinutes = allVisitors.reduce((sum, v) => sum + ((v.visit_count || 1) * 5), 0);
-      
-      // Статистика по устройства
-      const deviceStats = { desktop: 0, mobile: 0, tablet: 0 };
-      allVisitors.forEach(v => {
-        const count = v.visit_count || 1;
-        if (v.device_type === 'desktop') deviceStats.desktop += count;
-        else if (v.device_type === 'mobile') deviceStats.mobile += count;
-        else if (v.device_type === 'tablet') deviceStats.tablet += count;
+      // Групираме времената по IP адрес
+      const ipDurationMap = new Map();
+      durations.forEach(d => {
+        const ip = d.ip_address;
+        if (ip) {
+          const current = ipDurationMap.get(ip) || 0;
+          ipDurationMap.set(ip, current + d.duration_seconds);
+        }
       });
       
-      // Групиране по държава и град за таблицата
       const locationMap = new Map();
       const todayISO = new Date().toISOString().split('T')[0];
       
-      allVisitors.forEach(visitor => {
-        const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}`;
-        const visitISO = new Date(visitor.last_visit).toISOString().split('T')[0];
-        const isToday = visitISO === todayISO;
-        const count = visitor.visit_count || 1;
-        const minutes = count * 5;
-        
-        if (!locationMap.has(key)) {
-          locationMap.set(key, {
-            country: visitor.country || 'Unknown',
-            city: visitor.city || 'Unknown',
-            todayVisits: 0,
-            todayMinutes: 0,
-            totalVisits: 0,
-            totalMinutes: 0,
-            lastVisit: visitor.last_visit
-          });
-        }
-        
-        const loc = locationMap.get(key);
-        if (isToday) {
-          loc.todayVisits += count;
-          loc.todayMinutes += minutes;
-        }
-        loc.totalVisits += count;
-        loc.totalMinutes += minutes;
-        
-        if (new Date(visitor.last_visit) > new Date(loc.lastVisit)) {
-          loc.lastVisit = visitor.last_visit;
-        }
-        
-        locationMap.set(key, loc);
-      });
+      if (visitorsData.allVisitors) {
+        visitorsData.allVisitors.forEach(visitor => {
+          const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}`;
+          const visitISO = new Date(visitor.last_visit).toISOString().split('T')[0];
+          const isToday = visitISO === todayISO;
+          
+          const realSeconds = ipDurationMap.get(visitor.ip_address) || 0;
+          
+          if (!locationMap.has(key)) {
+            locationMap.set(key, {
+              country: visitor.country || 'Unknown',
+              city: visitor.city || 'Unknown',
+              todayVisits: 0,
+              todaySeconds: 0,
+              totalVisits: 0,
+              totalSeconds: 0,
+              lastVisit: visitor.last_visit
+            });
+          }
+          
+          const loc = locationMap.get(key);
+          if (isToday) {
+            loc.todayVisits += (visitor.visit_count || 1);
+            loc.todaySeconds += realSeconds;
+          }
+          loc.totalVisits += (visitor.visit_count || 1);
+          loc.totalSeconds += realSeconds;
+          
+          if (new Date(visitor.last_visit) > new Date(loc.lastVisit)) {
+            loc.lastVisit = visitor.last_visit;
+          }
+          
+          locationMap.set(key, loc);
+        });
+      }
       
       let locationStats = Array.from(locationMap.values())
         .sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
       
+      const totalSeconds = locationStats.reduce((sum, loc) => sum + loc.totalSeconds, 0);
+      
       setStats({ 
-        totalVisits,
-        totalMinutes,
-        deviceStats,
+        ...visitorsData, 
+        totalSeconds,
         locationStats,
         currentPage: 1,
         itemsPerPage: 5
@@ -357,7 +352,7 @@ export default function AdminPanel() {
               <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>ОБЩ БРОЙ ВЛИЗАНИЯ В САЙТА</p>
               <p style={{ fontSize: '3rem', fontWeight: 'bold', color: '#8b5cf6' }}>{stats.totalVisits || 0}</p>
               <p style={{ color: '#9ca3af', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-                Общо време: <strong style={{ color: '#8b5cf6' }}>{stats.totalMinutes || 0}</strong> минути
+                Общо време: <strong style={{ color: '#8b5cf6' }}>{formatDuration(stats.totalSeconds || 0)}</strong>
               </p>
             </div>
 
@@ -374,9 +369,9 @@ export default function AdminPanel() {
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}></th>
                     <th style={{ padding: '0.5rem', textAlign: 'center' }}>Visits</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>min</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>time</th>
                     <th style={{ padding: '0.5rem', textAlign: 'center' }}>Visits</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>min</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>time</th>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}></th>
                   </tr>
                 </thead>
@@ -386,9 +381,9 @@ export default function AdminPanel() {
                       <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                         <td style={{ padding: '0.5rem' }}>{loc.city}, {loc.country}</td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.todayVisits || 0}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.todayMinutes || 0}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{formatDuration(loc.todaySeconds || 0)}</td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.totalVisits || 0}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.totalMinutes || 0}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{formatDuration(loc.totalSeconds || 0)}</td>
                         <td style={{ padding: '0.5rem' }}>{formatDate(loc.lastVisit)}</td>
                       </tr>
                     ))
