@@ -14,7 +14,6 @@ export default function Home() {
   const heartbeatIntervalRef = useRef(null);
   const finalTimeSentRef = useRef(false);
 
-  // Генериране на уникален ID за сесията
   useEffect(() => {
     let savedSessionId = localStorage.getItem('session_id');
     if (!savedSessionId) {
@@ -25,12 +24,11 @@ export default function Home() {
     console.log('🆔 Session ID (запазен):', sessionIdRef.current);
   }, []);
 
-  // Функция за изпращане на времето на престой
   const sendDuration = async (seconds, isFinal = false) => {
     if (seconds < 15 && !isFinal) return;
     
     try {
-      const geoRes = await fetch('https://ip-api.com/json/');
+      const geoRes = await fetch('https://ipapi.co/json/');
       const geoData = await geoRes.json();
       
       await fetch('/api/visit-duration', {
@@ -39,7 +37,7 @@ export default function Home() {
         body: JSON.stringify({
           sessionId: sessionIdRef.current,
           durationSeconds: seconds,
-          ip: geoData.query
+          ip: geoData.ip
         })
       });
       console.log(`💓 Heartbeat: ${Math.floor(seconds / 60)} минути, ${seconds % 60} секунди`);
@@ -48,7 +46,6 @@ export default function Home() {
     }
   };
 
-  // Започваме засичането при зареждане
   useEffect(() => {
     startTimeRef.current = Date.now();
     
@@ -85,7 +82,6 @@ export default function Home() {
     };
   }, []);
 
-  // Проследяване на посещенията
   useEffect(() => {
     if (pathname === '/admin' || pathname === '/admin-login' || pathname.startsWith('/admin')) {
       console.log('⏭️ Пропускане на броене (административна страница)');
@@ -105,9 +101,9 @@ export default function Home() {
         
         console.log('📡 Започва проследяване...');
         
-        const geoRes = await fetch('https://ip-api.com/json/');
+        const geoRes = await fetch('https://ipapi.co/json/');
         const geoData = await geoRes.json();
-        console.log('📍 Локация (ip-api.com):', geoData);
+        console.log('📍 Локация (ipapi.co):', geoData);
         
         const userAgent = navigator.userAgent;
         let deviceType = 'desktop';
@@ -118,10 +114,10 @@ export default function Home() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ip: geoData.query,
-            country: geoData.country,
+            ip: geoData.ip,
+            country: geoData.country_name,
             city: geoData.city,
-            region: geoData.regionName,
+            region: geoData.region,
             userAgent: userAgent,
             deviceType: deviceType,
             sessionId: sessionIdRef.current
@@ -187,7 +183,6 @@ export default function Home() {
         </div>
       )}
       
-      {/* СТРАНИЦА 1 - HOME */}
       <div style={{
         height: '100vh',
         scrollSnapAlign: 'start',
@@ -209,7 +204,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* СТРАНИЦА 2 - AI Творчество */}
       <div style={{
         height: '100vh',
         scrollSnapAlign: 'start',
