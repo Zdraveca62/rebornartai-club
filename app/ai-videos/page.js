@@ -23,7 +23,6 @@ export default function AIVideosPage() {
     }
   };
 
-  // Категории
   const categories = [
     { id: 'impressions', title: '🎹 Видео Импресии', icon: '🎹', color: '#8b5cf6' },
     { id: 'musicVideos', title: '🎬 Музикални видеа', icon: '🎬', color: '#ec4899' },
@@ -31,7 +30,6 @@ export default function AIVideosPage() {
     { id: 'clients', title: '🎥 Видео - Клиенти', icon: '🎥', color: '#f59e0b' }
   ];
 
-  // Брой видеа във всяка категория
   const getVideoCount = (categoryId) => {
     return videos.filter(v => v.category === categoryId).length;
   };
