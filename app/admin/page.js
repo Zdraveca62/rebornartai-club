@@ -39,6 +39,7 @@ export default function AdminPanel() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('stats');
   const [songs, setSongs] = useState([]);
+  const [videos, setVideos] = useState([]);
   const [stats, setStats] = useState({ 
     totalVisits: 0, 
     totalSeconds: 0,
@@ -48,9 +49,11 @@ export default function AdminPanel() {
     itemsPerPage: 5
   });
   const [newSong, setNewSong] = useState({ title: '', youtubeId: '', lyrics: '', language: 'bg' });
+  const [newVideo, setNewVideo] = useState({ title: '', youtubeId: '', description: '', category: 'impressions' });
   const [status, setStatus] = useState('');
   const [songsCurrentPage, setSongsCurrentPage] = useState(1);
-  const [songsPerPage] = useState(5);
+  const [videosCurrentPage, setVideosCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
   const router = useRouter();
 
   const fetchSongs = async () => {
@@ -58,6 +61,13 @@ export default function AdminPanel() {
     const data = await res.json();
     const sortedSongs = data.sort((a, b) => b.id - a.id);
     setSongs(sortedSongs);
+  };
+
+  const fetchVideos = async () => {
+    const res = await fetch('/api/videos');
+    const data = await res.json();
+    const sortedVideos = data.sort((a, b) => b.id - a.id);
+    setVideos(sortedVideos);
   };
 
   const fetchStats = async () => {
@@ -154,6 +164,7 @@ export default function AdminPanel() {
         if (data.valid) {
           setIsAuthenticated(true);
           await fetchSongs();
+          await fetchVideos();
           await fetchStats();
         } else {
           sessionStorage.removeItem('admin_token');
@@ -187,6 +198,24 @@ export default function AdminPanel() {
     }
   };
 
+  const handleAddVideo = async (e) => {
+    e.preventDefault();
+    setStatus('Запазване...');
+    const res = await fetch('/api/videos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newVideo)
+    });
+    if (res.ok) {
+      await fetchVideos();
+      setNewVideo({ title: '', youtubeId: '', description: '', category: 'impressions' });
+      setStatus('✅ Видеото е добавено!');
+      setTimeout(() => setStatus(''), 3000);
+    } else {
+      setStatus('❌ Грешка');
+    }
+  };
+
   const handleDeleteSong = async (id) => {
     if (!confirm('Сигурни ли сте, че искате да изтриете тази песен?')) return;
     const res = await fetch('/api/songs', { 
@@ -201,22 +230,48 @@ export default function AdminPanel() {
     }
   };
 
-  const totalPages = Math.ceil((stats.locationStats?.length || 0) / stats.itemsPerPage);
+  const handleDeleteVideo = async (id) => {
+    if (!confirm('Сигурни ли сте, че искате да изтриете това видео?')) return;
+    const res = await fetch('/api/videos', { 
+      method: 'DELETE', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify({ id }) 
+    });
+    if (res.ok) {
+      await fetchVideos();
+      setStatus('✅ Видеото е изтрито!');
+      setTimeout(() => setStatus(''), 3000);
+    }
+  };
+
+  const totalPages = Math.ceil((stats.locationStats?.length || 0) / itemsPerPage);
   const paginatedLocations = stats.locationStats?.slice(
-    (stats.currentPage - 1) * stats.itemsPerPage,
-    stats.currentPage * stats.itemsPerPage
+    (stats.currentPage - 1) * itemsPerPage,
+    stats.currentPage * itemsPerPage
   ) || [];
 
   const goToPage = (page) => {
     setStats(prev => ({ ...prev, currentPage: page }));
   };
 
-  // Общ списък с песни (без разделение по езици)
-  const totalSongsPages = Math.ceil(songs.length / songsPerPage);
+  const totalSongsPages = Math.ceil(songs.length / itemsPerPage);
   const paginatedSongs = songs.slice(
-    (songsCurrentPage - 1) * songsPerPage,
-    songsCurrentPage * songsPerPage
+    (songsCurrentPage - 1) * itemsPerPage,
+    songsCurrentPage * itemsPerPage
   );
+
+  const totalVideosPages = Math.ceil(videos.length / itemsPerPage);
+  const paginatedVideos = videos.slice(
+    (videosCurrentPage - 1) * itemsPerPage,
+    videosCurrentPage * itemsPerPage
+  );
+
+  const categoryLabels = {
+    impressions: '🎹 Видео Импресии',
+    musicVideos: '🎬 Музикални видеа',
+    animations: '✨ Анимации',
+    clients: '🎥 Видео - Клиенти'
+  };
 
   if (isLoading) {
     return (
@@ -359,76 +414,138 @@ export default function AdminPanel() {
         )}
 
         {activeTab === 'music' && (
-  <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem' }}>
-    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '1rem' }}>🎵 Добави нова песен</h2>
-    
-    <form onSubmit={handleAddSong}>
-      <div style={{ marginBottom: '1rem' }}>
-        <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Заглавие:</label>
-        <input type="text" placeholder="Заглавие на песента" value={newSong.title} onChange={(e) => setNewSong({...newSong, title: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
-      </div>
+          <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '1rem' }}>🎵 Добави нова песен</h2>
+            
+            <form onSubmit={handleAddSong}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Заглавие:</label>
+                <input type="text" placeholder="Заглавие на песента" value={newSong.title} onChange={(e) => setNewSong({...newSong, title: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
+              </div>
 
-      <div style={{ marginBottom: '1rem' }}>
-        <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>YouTube ID:</label>
-        <input type="text" placeholder="напр. uxSIvsoWIH8" value={newSong.youtubeId} onChange={(e) => setNewSong({...newSong, youtubeId: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
-        <p style={{ color: '#9ca3af', fontSize: '0.75rem', marginTop: '0.25rem' }}>Вземи ID от URL: https://youtube.com/watch?v=<strong>ТУК Е ID</strong></p>
-      </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>YouTube ID:</label>
+                <input type="text" placeholder="напр. uxSIvsoWIH8" value={newSong.youtubeId} onChange={(e) => setNewSong({...newSong, youtubeId: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
+                <p style={{ color: '#9ca3af', fontSize: '0.75rem', marginTop: '0.25rem' }}>Вземи ID от URL: https://youtube.com/watch?v=<strong>ТУК Е ID</strong></p>
+              </div>
 
-      <div style={{ marginBottom: '1rem' }}>
-        <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Текст (lyrics):</label>
-        <textarea placeholder="Текст на песента..." value={newSong.lyrics} onChange={(e) => setNewSong({...newSong, lyrics: e.target.value})} required rows="6" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
-      </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Текст (lyrics):</label>
+                <textarea placeholder="Текст на песента..." value={newSong.lyrics} onChange={(e) => setNewSong({...newSong, lyrics: e.target.value})} required rows="6" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
+              </div>
 
-      <div style={{ marginBottom: '1rem' }}>
-        <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Език:</label>
-        <select value={newSong.language} onChange={(e) => setNewSong({...newSong, language: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }}>
-          <option value="bg">🇧🇬 Български</option>
-          <option value="en">🇬🇧 English</option>
-        </select>
-      </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Език:</label>
+                <select value={newSong.language} onChange={(e) => setNewSong({...newSong, language: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }}>
+                  <option value="bg">🇧🇬 Български</option>
+                  <option value="en">🇬🇧 English</option>
+                </select>
+              </div>
 
-      <button type="submit" style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.75rem 2rem', borderRadius: '8px', cursor: 'pointer' }}>+ Добави песен</button>
-    </form>
-    
-    {status && <p style={{ marginTop: '1rem', color: '#8b5cf6' }}>{status}</p>}
-    
-    <div style={{ marginTop: '2rem' }}>
-      <h3 style={{ color: 'white', marginBottom: '1rem' }}>
-        📋 Съществуващи песни ({songs.length})
-      </h3>
-      
-      {paginatedSongs.length === 0 ? (
-        <p style={{ color: '#9ca3af' }}>Няма добавени песни</p>
-      ) : (
-        paginatedSongs.map(song => (
-          <div key={song.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-            <span style={{ color: 'white' }}>
-              {song.language === 'bg' ? '🇧🇬' : '🇬🇧'} {song.title}
-            </span>
-            <button onClick={() => handleDeleteSong(song.id)} style={{ background: 'rgba(255,0,0,0.3)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer' }}>
-              {song.language === 'bg' ? 'Изтрий' : 'Delete'}
-            </button>
+              <button type="submit" style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.75rem 2rem', borderRadius: '8px', cursor: 'pointer' }}>+ Добави песен</button>
+            </form>
+            
+            {status && <p style={{ marginTop: '1rem', color: '#8b5cf6' }}>{status}</p>}
+            
+            <div style={{ marginTop: '2rem' }}>
+              <h3 style={{ color: 'white', marginBottom: '1rem' }}>
+                📋 Съществуващи песни ({songs.length})
+              </h3>
+              
+              {paginatedSongs.length === 0 ? (
+                <p style={{ color: '#9ca3af' }}>Няма добавени песни</p>
+              ) : (
+                paginatedSongs.map(song => (
+                  <div key={song.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                    <span style={{ color: 'white' }}>
+                      {song.language === 'bg' ? '🇧🇬' : '🇬🇧'} {song.title}
+                    </span>
+                    <button onClick={() => handleDeleteSong(song.id)} style={{ background: 'rgba(255,0,0,0.3)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer' }}>
+                      {song.language === 'bg' ? 'Изтрий' : 'Delete'}
+                    </button>
+                  </div>
+                ))
+              )}
+              
+              {totalSongsPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+                  <button onClick={() => setSongsCurrentPage(1)} disabled={songsCurrentPage === 1} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: songsCurrentPage === 1 ? 'not-allowed' : 'pointer', opacity: songsCurrentPage === 1 ? 0.5 : 1 }}>«</button>
+                  {[...Array(totalSongsPages)].map((_, i) => (
+                    <button key={i} onClick={() => setSongsCurrentPage(i + 1)} style={{ background: songsCurrentPage === i + 1 ? '#8b5cf6' : 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer' }}>{i + 1}</button>
+                  ))}
+                  <button onClick={() => setSongsCurrentPage(totalSongsPages)} disabled={songsCurrentPage === totalSongsPages} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: songsCurrentPage === totalSongsPages ? 'not-allowed' : 'pointer', opacity: songsCurrentPage === totalSongsPages ? 0.5 : 1 }}>»</button>
+                </div>
+              )}
+            </div>
           </div>
-        ))
-      )}
-      
-      {totalSongsPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-          <button onClick={() => setSongsCurrentPage(1)} disabled={songsCurrentPage === 1} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: songsCurrentPage === 1 ? 'not-allowed' : 'pointer', opacity: songsCurrentPage === 1 ? 0.5 : 1 }}>«</button>
-          {[...Array(totalSongsPages)].map((_, i) => (
-            <button key={i} onClick={() => setSongsCurrentPage(i + 1)} style={{ background: songsCurrentPage === i + 1 ? '#8b5cf6' : 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer' }}>{i + 1}</button>
-          ))}
-          <button onClick={() => setSongsCurrentPage(totalSongsPages)} disabled={songsCurrentPage === totalSongsPages} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: songsCurrentPage === totalSongsPages ? 'not-allowed' : 'pointer', opacity: songsCurrentPage === totalSongsPages ? 0.5 : 1 }}>»</button>
-        </div>
-      )}
-    </div>
-  </div>
-)}
+        )}
 
         {activeTab === 'videos' && (
           <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem' }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '1rem' }}>🎬 Добави видео</h2>
-            <p style={{ color: '#9ca3af' }}>Функционалността за видеа ще бъде добавена скоро.</p>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '1rem' }}>🎬 Добави ново видео</h2>
+            
+            <form onSubmit={handleAddVideo}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Заглавие:</label>
+                <input type="text" placeholder="Заглавие на видеото" value={newVideo.title} onChange={(e) => setNewVideo({...newVideo, title: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>YouTube ID:</label>
+                <input type="text" placeholder="напр. uxSIvsoWIH8" value={newVideo.youtubeId} onChange={(e) => setNewVideo({...newVideo, youtubeId: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
+                <p style={{ color: '#9ca3af', fontSize: '0.75rem', marginTop: '0.25rem' }}>Вземи ID от URL: https://youtube.com/watch?v=<strong>ТУК Е ID</strong></p>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Описание:</label>
+                <textarea placeholder="Описание на видеото..." value={newVideo.description} onChange={(e) => setNewVideo({...newVideo, description: e.target.value})} required rows="6" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Категория:</label>
+                <select value={newVideo.category} onChange={(e) => setNewVideo({...newVideo, category: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }}>
+                  <option value="impressions">🎹 Видео Импресии</option>
+                  <option value="musicVideos">🎬 Музикални видеа</option>
+                  <option value="animations">✨ Анимации</option>
+                  <option value="clients">🎥 Видео - Клиенти</option>
+                </select>
+              </div>
+
+              <button type="submit" style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.75rem 2rem', borderRadius: '8px', cursor: 'pointer' }}>+ Добави видео</button>
+            </form>
+            
+            {status && <p style={{ marginTop: '1rem', color: '#8b5cf6' }}>{status}</p>}
+            
+            <div style={{ marginTop: '2rem' }}>
+              <h3 style={{ color: 'white', marginBottom: '1rem' }}>
+                📋 Съществуващи видеа ({videos.length})
+              </h3>
+              
+              {paginatedVideos.length === 0 ? (
+                <p style={{ color: '#9ca3af' }}>Няма добавени видеа</p>
+              ) : (
+                paginatedVideos.map(video => (
+                  <div key={video.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                    <span style={{ color: 'white' }}>
+                      {categoryLabels[video.category] || video.category} - {video.title}
+                    </span>
+                    <button onClick={() => handleDeleteVideo(video.id)} style={{ background: 'rgba(255,0,0,0.3)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer' }}>
+                      Изтрий
+                    </button>
+                  </div>
+                ))
+              )}
+              
+              {totalVideosPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+                  <button onClick={() => setVideosCurrentPage(1)} disabled={videosCurrentPage === 1} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: videosCurrentPage === 1 ? 'not-allowed' : 'pointer', opacity: videosCurrentPage === 1 ? 0.5 : 1 }}>«</button>
+                  {[...Array(totalVideosPages)].map((_, i) => (
+                    <button key={i} onClick={() => setVideosCurrentPage(i + 1)} style={{ background: videosCurrentPage === i + 1 ? '#8b5cf6' : 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer' }}>{i + 1}</button>
+                  ))}
+                  <button onClick={() => setVideosCurrentPage(totalVideosPages)} disabled={videosCurrentPage === totalVideosPages} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: videosCurrentPage === totalVideosPages ? 'not-allowed' : 'pointer', opacity: videosCurrentPage === totalVideosPages ? 0.5 : 1 }}>»</button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
