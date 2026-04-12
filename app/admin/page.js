@@ -362,7 +362,7 @@ export default function AdminPanel() {
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}>Локация</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Сега ({getCurrentDateTime()})</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Днес ({getCurrentDateTime()})</th>
                     <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Общо</th>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}>Последно</th>
                   </tr>
