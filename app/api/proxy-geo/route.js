@@ -2,18 +2,27 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   try {
-    // Вземаме реалния IP на потребителя от хедърите на заявката
-    const forwardedFor = request.headers.get('x-forwarded-for');
-    const realIp = forwardedFor ? forwardedFor.split(',')[0] : request.headers.get('x-real-ip');
+    // Взимаме реалния IP на потребителя (проверяваме няколко хедъра)
+    let realIp = request.headers.get('x-forwarded-for');
+    if (realIp) {
+      realIp = realIp.split(',')[0].trim();
+    } else {
+      realIp = request.headers.get('x-real-ip');
+    }
     
-    console.log('📡 Реален IP на потребителя:', realIp);
+    // Ако няма IP, използваме default
+    if (!realIp) {
+      realIp = '';
+    }
+    
+    console.log('📡 IP за геолокация:', realIp);
     
     // Изпращаме IP адреса към ip-api.com
     const apiUrl = realIp ? `http://ip-api.com/json/${realIp}` : 'http://ip-api.com/json/';
     const response = await fetch(apiUrl);
     const data = await response.json();
     
-    console.log('📍 Локация от ip-api.com:', data);
+    console.log('📍 Отговор от ip-api.com:', data);
     
     return new Response(JSON.stringify(data), {
       status: 200,
@@ -21,8 +30,14 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error('Грешка в прокси заявката:', error);
-    return new Response(JSON.stringify({ error: 'Failed to fetch location' }), {
-      status: 500,
+    return new Response(JSON.stringify({ 
+      status: 'fail',
+      country: 'Unknown',
+      city: 'Unknown',
+      query: '0.0.0.0'
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 }
