@@ -27,6 +27,7 @@ export async function POST(request) {
     const { title, youtubeId, description, category } = await request.json();
     
     const coverUrl = `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
+      console.log('📹 Генериран cover URL:', coverUrl);
     
     const { data, error } = await supabase
       .from('videos')

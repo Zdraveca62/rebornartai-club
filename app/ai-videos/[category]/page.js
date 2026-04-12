@@ -43,11 +43,17 @@ export default function CategoryVideosPage() {
   };
 
   const getImageUrl = (video) => {
-    if (imageErrors[video.id]) {
-      return `https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`;
-    }
-    return video.cover_url || `https://img.youtube.com/vi/${video.youtube_id}/maxresdefault.jpg`;
-  };
+  // Първо опитваме с maxresdefault.jpg
+  const maxResUrl = `https://img.youtube.com/vi/${video.youtube_id}/maxresdefault.jpg`;
+  // Ако не успее, използваме hqdefault.jpg
+  const hqUrl = `https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`;
+  
+  // Използваме state за fallback
+  if (imageErrors[video.id]) {
+    return hqUrl;
+  }
+  return maxResUrl;
+};
 
   const handleVideoClick = (video) => {
     setSelectedVideo(video);
