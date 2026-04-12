@@ -14,49 +14,7 @@ const formatDate = (dateString) => {
   return `${day}/${month}/${year}`;
 };
 
-// Функция за получаване на текущия ден и час
-const getCurrentDateTime = () => {
-  const now = new Date();
-  const day = now.getDate();
-  const month = now.toLocaleString('default', { month: 'long' });
-  const hours = now.getHours().toString().padStart(2, '0');
-  const minutes = now.getMinutes().toString().padStart(2, '0');
-  return `${day} ${month}, ${hours}:${minutes}`;
-};
-
-// Функция за форматиране на секунди
-const formatDuration = (seconds) => {
-  if (!seconds || seconds < 0) return '0';
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  if (remainingSeconds === 0) return `${minutes}min`;
-  return `${minutes}min ${remainingSeconds}s`;
-};
-
-export default function AdminPanel() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('stats');
-  const [songs, setSongs] = useState([]);
-  const [videos, setVideos] = useState([]);
-  const [stats, setStats] = useState({ 
-    totalVisits: 0, 
-    totalSeconds: 0,
-    deviceStats: { desktop: 0, mobile: 0, tablet: 0 }, 
-    locationStats: [],
-    currentPage: 1,
-    itemsPerPage: 5
-  });
-  const [newSong, setNewSong] = useState({ title: '', youtubeId: '', lyrics: '', language: 'bg' });
-  const [newVideo, setNewVideo] = useState({ title: '', youtubeId: '', description: '', category: 'impressions' });
-  const [status, setStatus] = useState('');
-  const [songsCurrentPage, setSongsCurrentPage] = useState(1);
-  const [videosCurrentPage, setVideosCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
-  const router = useRouter();
-
-  // Функция за форматиране на време (секунди → часове/минути/секунди)
+// Функция за форматиране на време (секунди → часове/минути/секунди)
 const formatDuration = (totalSeconds) => {
   if (!totalSeconds || totalSeconds < 0) return '0';
   
@@ -79,6 +37,38 @@ const formatDuration = (totalSeconds) => {
   return `${seconds}s`;
 };
 
+// Функция за получаване на текущия ден и час
+const getCurrentDateTime = () => {
+  const now = new Date();
+  const day = now.getDate();
+  const month = now.toLocaleString('default', { month: 'long' });
+  const hours = now.getHours().toString().padStart(2, '0');
+  const minutes = now.getMinutes().toString().padStart(2, '0');
+  return `${day} ${month}, ${hours}:${minutes}`;
+};
+
+export default function AdminPanel() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('stats');
+  const [songs, setSongs] = useState([]);
+  const [videos, setVideos] = useState([]);
+  const [stats, setStats] = useState({ 
+    totalVisits: 0, 
+    totalMinutes: 0,
+    deviceStats: { desktop: 0, mobile: 0, tablet: 0 }, 
+    locationStats: [],
+    currentPage: 1,
+    itemsPerPage: 5
+  });
+  const [newSong, setNewSong] = useState({ title: '', youtubeId: '', lyrics: '', language: 'bg' });
+  const [newVideo, setNewVideo] = useState({ title: '', youtubeId: '', description: '', category: 'impressions' });
+  const [status, setStatus] = useState('');
+  const [songsCurrentPage, setSongsCurrentPage] = useState(1);
+  const [videosCurrentPage, setVideosCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
+  const router = useRouter();
+
   const fetchSongs = async () => {
     const res = await fetch('/api/songs');
     const data = await res.json();
@@ -98,65 +88,71 @@ const formatDuration = (totalSeconds) => {
       const visitorsRes = await fetch('/api/visitors');
       const visitorsData = await visitorsRes.json();
       
-      const durationRes = await fetch('/api/visit-duration');
-      const durations = await durationRes.json();
+      console.log('📊 Данни от API:', visitorsData);
       
-      const ipDurationMap = new Map();
-      durations.forEach(d => {
-        const ip = d.ip_address;
-        if (ip) {
-          const current = ipDurationMap.get(ip) || 0;
-          ipDurationMap.set(ip, current + d.duration_seconds);
-        }
+      // Вземете allVisitors масива директно
+      const allVisitors = visitorsData.allVisitors || [];
+      
+      // Изчислете общ брой посещения
+      const totalVisits = allVisitors.reduce((sum, v) => sum + (v.visit_count || 1), 0);
+      
+      // Изчислете общо време (5 минути на посещение)
+      const totalMinutes = allVisitors.reduce((sum, v) => sum + ((v.visit_count || 1) * 5), 0);
+      
+      // Статистика по устройства
+      const deviceStats = { desktop: 0, mobile: 0, tablet: 0 };
+      allVisitors.forEach(v => {
+        const count = v.visit_count || 1;
+        if (v.device_type === 'desktop') deviceStats.desktop += count;
+        else if (v.device_type === 'mobile') deviceStats.mobile += count;
+        else if (v.device_type === 'tablet') deviceStats.tablet += count;
       });
       
+      // Групиране по държава и град за таблицата
       const locationMap = new Map();
       const todayISO = new Date().toISOString().split('T')[0];
       
-      if (visitorsData.allVisitors) {
-        visitorsData.allVisitors.forEach(visitor => {
-          const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}`;
-          const visitISO = new Date(visitor.last_visit).toISOString().split('T')[0];
-          const isToday = visitISO === todayISO;
-          
-          const realSeconds = ipDurationMap.get(visitor.ip_address) || 0;
-          
-          if (!locationMap.has(key)) {
-            locationMap.set(key, {
-              country: visitor.country || 'Unknown',
-              city: visitor.city || 'Unknown',
-              todayVisits: 0,
-              todaySeconds: 0,
-              totalVisits: 0,
-              totalSeconds: 0,
-              lastVisit: visitor.last_visit
-            });
-          }
-          
-          const loc = locationMap.get(key);
-          if (isToday) {
-            loc.todayVisits += (visitor.visit_count || 1);
-            loc.todaySeconds += realSeconds;
-          }
-          loc.totalVisits += (visitor.visit_count || 1);
-          loc.totalSeconds += realSeconds;
-          
-          if (new Date(visitor.last_visit) > new Date(loc.lastVisit)) {
-            loc.lastVisit = visitor.last_visit;
-          }
-          
-          locationMap.set(key, loc);
-        });
-      }
+      allVisitors.forEach(visitor => {
+        const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}`;
+        const visitISO = new Date(visitor.last_visit).toISOString().split('T')[0];
+        const isToday = visitISO === todayISO;
+        const count = visitor.visit_count || 1;
+        const minutes = count * 5;
+        
+        if (!locationMap.has(key)) {
+          locationMap.set(key, {
+            country: visitor.country || 'Unknown',
+            city: visitor.city || 'Unknown',
+            todayVisits: 0,
+            todayMinutes: 0,
+            totalVisits: 0,
+            totalMinutes: 0,
+            lastVisit: visitor.last_visit
+          });
+        }
+        
+        const loc = locationMap.get(key);
+        if (isToday) {
+          loc.todayVisits += count;
+          loc.todayMinutes += minutes;
+        }
+        loc.totalVisits += count;
+        loc.totalMinutes += minutes;
+        
+        if (new Date(visitor.last_visit) > new Date(loc.lastVisit)) {
+          loc.lastVisit = visitor.last_visit;
+        }
+        
+        locationMap.set(key, loc);
+      });
       
       let locationStats = Array.from(locationMap.values())
         .sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
       
-      const totalSeconds = locationStats.reduce((sum, loc) => sum + loc.totalSeconds, 0);
-      
       setStats({ 
-        ...visitorsData, 
-        totalSeconds,
+        totalVisits,
+        totalMinutes,
+        deviceStats,
         locationStats,
         currentPage: 1,
         itemsPerPage: 5
@@ -227,7 +223,12 @@ const formatDuration = (totalSeconds) => {
     const res = await fetch('/api/videos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newVideo)
+      body: JSON.stringify({
+        title: newVideo.title,
+        youtubeId: newVideo.youtubeId.trim(),
+        description: newVideo.description,
+        category: newVideo.category
+      })
     });
     if (res.ok) {
       await fetchVideos();
@@ -267,10 +268,10 @@ const formatDuration = (totalSeconds) => {
     }
   };
 
-  const totalPages = Math.ceil((stats.locationStats?.length || 0) / itemsPerPage);
+  const totalPages = Math.ceil((stats.locationStats?.length || 0) / stats.itemsPerPage);
   const paginatedLocations = stats.locationStats?.slice(
-    (stats.currentPage - 1) * itemsPerPage,
-    stats.currentPage * itemsPerPage
+    (stats.currentPage - 1) * stats.itemsPerPage,
+    stats.currentPage * stats.itemsPerPage
   ) || [];
 
   const goToPage = (page) => {
@@ -356,7 +357,7 @@ const formatDuration = (totalSeconds) => {
               <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>ОБЩ БРОЙ ВЛИЗАНИЯ В САЙТА</p>
               <p style={{ fontSize: '3rem', fontWeight: 'bold', color: '#8b5cf6' }}>{stats.totalVisits || 0}</p>
               <p style={{ color: '#9ca3af', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-              Общо време: <strong style={{ color: '#8b5cf6' }}>{formatDuration(stats.totalSeconds || 0)}</strong>
+                Общо време: <strong style={{ color: '#8b5cf6' }}>{stats.totalMinutes || 0}</strong> минути
               </p>
             </div>
 
@@ -366,16 +367,16 @@ const formatDuration = (totalSeconds) => {
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}>Локация</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Днес({getCurrentDateTime()})</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Сега ({getCurrentDateTime()})</th>
                     <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Общо</th>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}>Последно</th>
                   </tr>
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}></th>
                     <th style={{ padding: '0.5rem', textAlign: 'center' }}>Visits</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>time</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>min</th>
                     <th style={{ padding: '0.5rem', textAlign: 'center' }}>Visits</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>time</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>min</th>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}></th>
                   </tr>
                 </thead>
@@ -384,8 +385,11 @@ const formatDuration = (totalSeconds) => {
                     paginatedLocations.map((loc, idx) => (
                       <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                         <td style={{ padding: '0.5rem' }}>{loc.city}, {loc.country}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{formatDuration(loc.totalSeconds || 0)}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{formatDuration(loc.totalSeconds || 0)}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.todayVisits || 0}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.todayMinutes || 0}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.totalVisits || 0}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.totalMinutes || 0}</td>
+                        <td style={{ padding: '0.5rem' }}>{formatDate(loc.lastVisit)}</td>
                       </tr>
                     ))
                   ) : (
@@ -547,7 +551,7 @@ const formatDuration = (totalSeconds) => {
                 paginatedVideos.map(video => (
                   <div key={video.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                     <span style={{ color: 'white' }}>
-                      {categoryLabels[video.category] || video.category} - {video.title}
+                      {categoryLabels[video.category]} - {video.title}
                     </span>
                     <button onClick={() => handleDeleteVideo(video.id)} style={{ background: 'rgba(255,0,0,0.3)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer' }}>
                       Изтрий
