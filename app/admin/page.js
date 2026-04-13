@@ -83,7 +83,7 @@ export default function AdminPanel() {
     setVideos(sortedVideos);
   };
 
-  const fetchStats = async () => {
+const fetchStats = async () => {
   try {
     const visitorsRes = await fetch('/api/visitors');
     const visitorsData = await visitorsRes.json();
@@ -92,34 +92,34 @@ export default function AdminPanel() {
     const durations = await durationRes.json();
     
     // Групираме времената по IP + device_type
-    const ipDeviceDurationMap = new Map();
+    const totalDurationMap = new Map();
+    const todayDurationMap = new Map();
+    const todayISO = new Date().toISOString().split('T')[0];
+    
     durations.forEach(d => {
       const key = `${d.ip_address}|${d.device_type || 'desktop'}`;
-      const current = ipDeviceDurationMap.get(key) || 0;
-      ipDeviceDurationMap.set(key, current + d.duration_seconds);
+      const durationDate = new Date(d.created_at).toISOString().split('T')[0];
+      
+      // Общо време
+      const currentTotal = totalDurationMap.get(key) || 0;
+      totalDurationMap.set(key, currentTotal + d.duration_seconds);
+      
+      // Днешно време
+      if (durationDate === todayISO) {
+        const currentToday = todayDurationMap.get(key) || 0;
+        todayDurationMap.set(key, currentToday + d.duration_seconds);
+      }
     });
     
     const locationMap = new Map();
-    const todayISO = new Date().toISOString().split('T')[0];
     
     if (visitorsData.allVisitors) {
       visitorsData.allVisitors.forEach(visitor => {
         const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}|${visitor.device_type || 'desktop'}`;
-        const visitISO = new Date(visitor.last_visit).toISOString().split('T')[0];
-        const isToday = visitISO === todayISO;
+        const deviceKey = `${visitor.ip_address}|${visitor.device_type || 'desktop'}`;
         
-        const totalSeconds = ipDeviceDurationMap.get(`${visitor.ip_address}|${visitor.device_type}`) || 0;
-        
-        // Изчисляваме днешните секунди
-        let todaySeconds = 0;
-        durations.forEach(d => {
-          if (d.ip_address === visitor.ip_address && d.device_type === visitor.device_type) {
-            const durationDate = new Date(d.created_at).toISOString().split('T')[0];
-            if (durationDate === todayISO) {
-              todaySeconds += d.duration_seconds;
-            }
-          }
-        });
+        const totalSeconds = totalDurationMap.get(deviceKey) || 0;
+        const todaySeconds = todayDurationMap.get(deviceKey) || 0;
         
         if (!locationMap.has(key)) {
           locationMap.set(key, {
@@ -135,10 +135,8 @@ export default function AdminPanel() {
         }
         
         const loc = locationMap.get(key);
-        if (isToday) {
-          loc.todayVisits += (visitor.visit_count || 1);
-          loc.todaySeconds += todaySeconds;
-        }
+        loc.todayVisits += (visitor.visit_count || 1);
+        loc.todaySeconds += todaySeconds;
         loc.totalVisits += (visitor.visit_count || 1);
         loc.totalSeconds += totalSeconds;
         
