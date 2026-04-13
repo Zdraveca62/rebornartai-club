@@ -24,27 +24,33 @@ export default function Home() {
     console.log('🆔 Session ID (запазен):', sessionIdRef.current);
   }, []);
 
-  const sendDuration = async (seconds, isFinal = false) => {
-    if (seconds < 15 && !isFinal) return;
+const sendDuration = async (seconds, isFinal = false) => {
+  if (seconds < 15 && !isFinal) return;
+  
+  try {
+    const geoRes = await fetch('/api/proxy-geo');
+    const geoData = await geoRes.json();
     
-    try {
-      const geoRes = await fetch('/api/proxy-geo');
-      const geoData = await geoRes.json();
-      
-      await fetch('/api/visit-duration', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: sessionIdRef.current,
-          durationSeconds: seconds,
-          ip: geoData.query
-        })
-      });
-      console.log(`💓 Heartbeat: ${Math.floor(seconds / 60)} минути, ${seconds % 60} секунди`);
-    } catch (err) {
-      console.error('Грешка при изпращане на време:', err);
-    }
-  };
+    const userAgent = navigator.userAgent;
+    let deviceType = 'desktop';
+    if (/mobile|android|iphone|phone/i.test(userAgent)) deviceType = 'mobile';
+    else if (/tablet|ipad/i.test(userAgent)) deviceType = 'tablet';
+    
+    await fetch('/api/visit-duration', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: sessionIdRef.current,
+        durationSeconds: seconds,
+        ip: geoData.query,
+        deviceType: deviceType
+      })
+    });
+    console.log(`💓 Heartbeat: ${Math.floor(seconds / 60)} минути, ${seconds % 60} секунди, устройство: ${deviceType}`);
+  } catch (err) {
+    console.error('Грешка при изпращане на време:', err);
+  }
+};
 
   useEffect(() => {
     startTimeRef.current = Date.now();

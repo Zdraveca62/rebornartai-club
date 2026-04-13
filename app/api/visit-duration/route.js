@@ -1,5 +1,3 @@
-export const dynamic = 'force-dynamic';
-
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -10,21 +8,22 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(request) {
   try {
-    const { sessionId, durationSeconds, ip } = await request.json();
+    const { sessionId, durationSeconds, ip, deviceType } = await request.json();
     
     let finalIp = ip;
     if (!finalIp || finalIp === '0.0.0.0') {
       finalIp = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
     }
     
-    console.log('💓 Записване на време:', { sessionId, durationSeconds, ip: finalIp });
+    console.log('💓 Записване на време:', { sessionId, durationSeconds, ip: finalIp, deviceType });
     
     const { error } = await supabase
       .from('visit_duration')
       .insert({
         ip_address: finalIp,
         session_id: sessionId,
-        duration_seconds: durationSeconds
+        duration_seconds: durationSeconds,
+        device_type: deviceType
       });
     
     if (error) throw error;
@@ -49,6 +48,6 @@ export async function GET() {
     return NextResponse.json(data || []);
   } catch (error) {
     console.error('❌ Грешка при GET:', error);
-    return NextResponse.json([]); // Връщаме празен масив при грешка
+    return NextResponse.json([], { status: 500 });
   }
 }
