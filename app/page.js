@@ -241,15 +241,48 @@ const sendDuration = async (seconds, isFinal = false) => {
             </div>
           </Link>
           
-          <Link href="/admin" style={{ textDecoration: 'none' }}>
-            <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem', cursor: 'pointer', textAlign: 'center', border: '1px solid rgba(99, 102, 241, 0.5)' }}>
-              <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>⚙️</div>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '0.5rem' }}>Admin</h3>
-              <p style={{ color: '#d1d5db' }}>Управление</p>
-            </div>
-          </Link>
+           <Link href="/blog" style={{ textDecoration: 'none' }}>
+             <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem', cursor: 'pointer', textAlign: 'center', border: '1px solid rgba(245, 158, 11, 0.5)' }}>
+                <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>📝</div>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '0.5rem' }}>AI Blog</h3>
+               <p style={{ color: '#d1d5db' }}>Всичко за AI</p>
+             </div>
+           </Link>
+           
+           <Link href="/jukebox" style={{ textDecoration: 'none' }}>
+             <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem', cursor: 'pointer', textAlign: 'center', border: '1px solid rgba(16, 185, 129, 0.5)' }}>
+               <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🎧</div>
+               <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '0.5rem' }}>Jukebox</h3>
+               <p style={{ color: '#d1d5db' }}>Непрекъснато слушане</p>
+             </div>
+           </Link>
         </div>
-        
+        <Link href="/admin" style={{ textDecoration: 'none', position: 'fixed', bottom: '20px', right: '20px', zIndex: 100 }}>
+  <div style={{
+    background: 'rgba(255,255,255,0.15)',
+    backdropFilter: 'blur(8px)',
+    borderRadius: '12px',
+    padding: '0.75rem 1.5rem',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    border: '1px solid rgba(255,255,255,0.2)',
+    transition: 'all 0.3s ease'
+  }}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.background = 'rgba(255,255,255,0.25)';
+    e.currentTarget.style.transform = 'scale(1.05)';
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+    e.currentTarget.style.transform = 'scale(1)';
+  }}>
+    <span style={{ fontSize: '1.2rem' }}>⚙️</span>
+    <span style={{ color: 'white', fontSize: '0.9rem', fontWeight: '500' }}>Admin</span>
+  </div>
+</Link>
+
         <p style={{ color: '#9ca3af', marginTop: '2rem', fontSize: '0.875rem' }}>
           ⚡ Всяка плочка води към съответната секция
         </p>

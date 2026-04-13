@@ -12,8 +12,8 @@ export default function Jukebox() {
   const [isPlaying, setIsPlaying] = useState(false);
   const playerRef = useRef(null);
 
-  // Функция за скъсяване на текст до 15 знака
-  const truncateText = (text, maxLength = 15) => {
+  // Функция за скъсяване на текст до 12 знака (за да се побира във височината)
+  const truncateText = (text, maxLength = 12) => {
     if (!text) return '';
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
@@ -122,7 +122,7 @@ export default function Jukebox() {
       <div style={{
         display: 'flex',
         overflowX: 'auto',
-        gap: '1.5rem',
+        gap: '1rem',
         padding: '1rem',
         marginBottom: '2rem',
         background: 'rgba(0,0,0,0.3)',
@@ -132,7 +132,6 @@ export default function Jukebox() {
         {allSongs.map((song) => (
           <div key={song.id} style={{ 
             flex: '0 0 auto', 
-            width: '80px', 
             textAlign: 'center',
             cursor: 'pointer',
             transition: 'all 0.3s',
@@ -140,55 +139,55 @@ export default function Jukebox() {
             flexDirection: 'column',
             alignItems: 'center'
           }} onClick={() => addToQueue(song)}>
-            {/* РАМКА (БУТОН) С ТЕКСТА НА ПЕСЕНТА */}
+            {/* ВЕРТИКАЛЕН БАДЖ (30x80) - ХОРИЗОНТАЛЕН ТЕКСТ, ЗАВЪРТЯН НА 90° */}
             <div style={{
-              width: '80px',
-              height: '60px',
-              backgroundColor: '#e5e7eb', // светлосив фон
+              width: '30px',
+              height: '80px',
+              backgroundColor: '#bfdbfe',
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              textAlign: 'center',
-              padding: '4px',
               marginBottom: '8px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              position: 'relative'
             }}>
               <span style={{
-                color: '#1f2937',
-                fontSize: '12px',
+                fontSize: '11px',
                 fontWeight: '500',
-                wordBreak: 'break-word',
-                display: '-webkit-box',
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden'
+                color: '#1e3a8a',
+                whiteSpace: 'nowrap',
+                display: 'inline-block',
+                transform: 'rotate(-90deg)',
+                transformOrigin: 'center center',
+                width: '80px',
+                textAlign: 'center'
               }}>
-                {truncateText(song.title, 15)}
+                {truncateText(song.title, 12)}
               </span>
             </div>
             {/* Тъмбнейл */}
             <img 
               src={song.cover_url} 
               alt={song.title}
-              style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px' }}
-              onError={(e) => e.target.src = 'https://via.placeholder.com/60'}
+              style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '8px' }}
+              onError={(e) => e.target.src = 'https://via.placeholder.com/50'}
             />
           </div>
         ))}
       </div>
 
       {/* ОПАШКА ЗА ИЗПЪЛНЕНИЕ */}
-      <h2 style={{ textAlign: 'center', marginBottom: '1rem', fontSize: '1.5rem' }}>📋 Опашка за изпълнение</h2>
+      <h2 style={{ textAlign: 'center', marginBottom: '1rem', fontSize: '1.5rem' }}>📋Лист: Избрани песни</h2>
       <div style={{
         display: 'flex',
         overflowX: 'auto',
-        gap: '1.5rem',
+        gap: '1rem',
         padding: '1rem',
         marginBottom: '2rem',
         background: 'rgba(0,0,0,0.3)',
         borderRadius: '16px',
-        minHeight: '200px',
+        minHeight: '180px',
         alignItems: 'center'
       }}>
         {queue.length === 0 && (
@@ -197,7 +196,6 @@ export default function Jukebox() {
         {queue.map((song, idx) => (
           <div key={idx} style={{ 
             flex: '0 0 auto', 
-            width: '80px', 
             textAlign: 'center',
             position: 'relative',
             background: currentIndexInQueue === idx ? 'rgba(139,92,246,0.2)' : 'transparent',
@@ -207,41 +205,41 @@ export default function Jukebox() {
             flexDirection: 'column',
             alignItems: 'center'
           }}>
-            {/* РАМКА (БУТОН) С ТЕКСТА НА ПЕСЕНТА */}
+            {/* ВЕРТИКАЛЕН БАДЖ (30x80) - ХОРИЗОНТАЛЕН ТЕКСТ, ЗАВЪРТЯН НА 90° */}
             <div style={{
-              width: '80px',
-              height: '60px',
-              backgroundColor: currentIndexInQueue === idx ? '#8b5cf6' : '#e5e7eb',
+              width: '30px',
+              height: '80px',
+              backgroundColor: currentIndexInQueue === idx ? '#8b5cf6' : '#bfdbfe',
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              textAlign: 'center',
-              padding: '4px',
               marginBottom: '8px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-              transition: 'background-color 0.3s'
+              transition: 'background-color 0.3s',
+              position: 'relative'
             }}>
               <span style={{
-                color: currentIndexInQueue === idx ? 'white' : '#1f2937',
-                fontSize: '12px',
+                fontSize: '11px',
                 fontWeight: '500',
-                wordBreak: 'break-word',
-                display: '-webkit-box',
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden'
+                color: currentIndexInQueue === idx ? 'white' : '#1e3a8a',
+                whiteSpace: 'nowrap',
+                display: 'inline-block',
+                transform: 'rotate(-90deg)',
+                transformOrigin: 'center center',
+                width: '80px',
+                textAlign: 'center'
               }}>
-                {truncateText(song.title, 15)}
+                {truncateText(song.title, 12)}
               </span>
             </div>
             {/* Тъмбнейл */}
             <img 
               src={song.cover_url} 
               alt={song.title}
-              style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px' }}
+              style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '8px' }}
             />
-            {/* Индикатор за текуща песен (стрелка под тъмбнейла) */}
+            {/* Индикатор за текуща песен */}
             {currentIndexInQueue === idx && (
               <div style={{ fontSize: '1.5rem', marginTop: '4px' }}>▼</div>
             )}
