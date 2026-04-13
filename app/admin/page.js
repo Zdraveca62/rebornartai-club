@@ -383,26 +383,28 @@ const fetchStats = async () => {
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}></th>
                   </tr>
                 </thead>
-                <tbody>
-                  {paginatedLocations.length > 0 ? (
-                    paginatedLocations.map((loc, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                        <td style={{ padding: '0.5rem' }}>{loc.city}, {loc.country}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.todayVisits || 0}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{formatDuration(loc.todaySeconds || 0)}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.totalVisits || 0}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{formatDuration(loc.totalSeconds || 0)}</td>
-                        <td style={{ padding: '0.5rem' }}>{formatDate(loc.lastVisit)}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="6" style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af' }}>
-                        Няма данни за посетители
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
+<tbody>
+  {paginatedLocations.length > 0 ? (
+    paginatedLocations.map((loc, idx) => (
+      <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+        <td style={{ padding: '0.5rem' }}>
+          {loc.deviceType === 'mobile' ? '📱' : loc.deviceType === 'tablet' ? '📟' : '💻'} {loc.city}, {loc.country}
+        </td>
+        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.todayVisits || 0}</td>
+        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{formatDuration(loc.todaySeconds || 0)}</td>
+        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.totalVisits || 0}</td>
+        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{formatDuration(loc.totalSeconds || 0)}</td>
+        <td style={{ padding: '0.5rem' }}>{formatDate(loc.lastVisit)}</td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td colSpan="6" style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af' }}>
+        Няма данни за посетители
+      </td>
+    </tr>
+  )}
+</tbody>
               </table>
             </div>
 
@@ -462,7 +464,7 @@ const fetchStats = async () => {
               </div>
 
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Език:</label>
+                <label style={{ color: '#6793de', display: 'block', marginBottom: '0.5rem' }}>Език:</label>
                 <select value={newSong.language} onChange={(e) => setNewSong({...newSong, language: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }}>
                   <option value="bg">🇧🇬 Български</option>
                   <option value="en">🇬🇧 English</option>
@@ -529,7 +531,7 @@ const fetchStats = async () => {
               </div>
 
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Категория:</label>
+                <label style={{ color: '#6297f3', display: 'block', marginBottom: '0.5rem' }}>Категория:</label>
                 <select value={newVideo.category} onChange={(e) => setNewVideo({...newVideo, category: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }}>
                   <option value="impressions">🎹 Видео Импресии</option>
                   <option value="musicVideos">🎬 Музикални видеа</option>
@@ -549,7 +551,7 @@ const fetchStats = async () => {
               </h3>
               
               {paginatedVideos.length === 0 ? (
-                <p style={{ color: '#9ca3af' }}>Няма добавени видеа</p>
+                <p style={{ color: '#769de0' }}>Няма добавени видеа</p>
               ) : (
                 paginatedVideos.map(video => (
                   <div key={video.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
