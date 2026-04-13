@@ -112,9 +112,16 @@ const sendDuration = async (seconds, isFinal = false) => {
         console.log('📍 Локация (ip-api.com):', geoData);
         
         const userAgent = navigator.userAgent;
-        let deviceType = 'desktop';
-        if (/mobile|android|iphone|phone/i.test(userAgent)) deviceType = 'mobile';
-        else if (/tablet|ipad/i.test(userAgent)) deviceType = 'tablet';
+          let deviceType = 'desktop';
+
+          // По-точна проверка за мобилни устройства
+          if (/Mobi|Android|iPhone|iPad|iPod|BlackBerry|Opera Mini|IEMobile|WPDesktop/i.test(userAgent)) {
+          deviceType = 'mobile';
+      }
+         // Специална проверка за таблети (ако искате да ги различавате)
+          else if (/Tablet|iPad/i.test(userAgent)) {
+          deviceType = 'tablet';
+          }
         
         const response = await fetch('/api/visitors', {
           method: 'POST',
