@@ -10,16 +10,18 @@ export default function Jukebox() {
   const [loading, setLoading] = useState(true);
   const [shuffle, setShuffle] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const carouselRef = useRef(null);
   const playerRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
-  // Функция за скъсяване на текст до 12 знака (за да се побира във височината)
   const truncateText = (text, maxLength = 12) => {
     if (!text) return '';
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
   };
 
-  // Зареждане на всички песни
   useEffect(() => {
     fetch('/api/songs')
       .then(res => res.json())
@@ -29,12 +31,34 @@ export default function Jukebox() {
       });
   }, []);
 
-  // Добавяне на песен в опашката
+  // Проверка дали може да се скролва наляво/надясно
+  const checkScrollButtons = () => {
+    if (carouselRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 5);
+    }
+  };
+
+  useEffect(() => {
+    checkScrollButtons();
+    window.addEventListener('resize', checkScrollButtons);
+    return () => window.removeEventListener('resize', checkScrollButtons);
+  }, [allSongs]);
+
+  const scroll = (direction) => {
+    if (carouselRef.current) {
+      const scrollAmount = 200;
+      const newScrollPosition = carouselRef.current.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount);
+      carouselRef.current.scrollTo({ left: newScrollPosition, behavior: 'smooth' });
+      setTimeout(checkScrollButtons, 300);
+    }
+  };
+
   const addToQueue = (song) => {
     setQueue(prev => [...prev, song]);
   };
 
-  // Премахване на песен от опашката
   const removeFromQueue = (index) => {
     const newQueue = [...queue];
     newQueue.splice(index, 1);
@@ -44,7 +68,6 @@ export default function Jukebox() {
     }
   };
 
-  // Пренареждане на опашката
   const moveUp = (index) => {
     if (index === 0) return;
     const newQueue = [...queue];
@@ -63,11 +86,10 @@ export default function Jukebox() {
     else if (currentIndexInQueue === index + 1) setCurrentIndexInQueue(index);
   };
 
-  // Текуща песен
   const currentSong = queue[currentIndexInQueue];
 
-  // Следваща песен
   const playNext = () => {
+    if (queue.length === 0) return;
     let nextIndex = currentIndexInQueue + 1;
     if (shuffle && queue.length > 1) {
       let newIndex;
@@ -83,19 +105,28 @@ export default function Jukebox() {
     setIsPlaying(true);
   };
 
-  // Предишна песен
   const playPrev = () => {
+    if (queue.length === 0) return;
     let prevIndex = currentIndexInQueue - 1;
     if (prevIndex < 0) prevIndex = queue.length - 1;
     setCurrentIndexInQueue(prevIndex);
     setIsPlaying(true);
   };
 
-  // Зареждане на YouTube плейър при смяна на песен
+  // Автоматично пускане на следваща песен при край на текущата
   useEffect(() => {
     if (playerRef.current && currentSong) {
       const iframe = playerRef.current;
       iframe.src = `https://www.youtube.com/embed/${currentSong.youtube_id}?autoplay=${isPlaying ? 1 : 0}&enablejsapi=1`;
+      
+      // Добавяме listener за край на видеото
+      const handleMessage = (event) => {
+        if (event.data === 'ended') {
+          playNext();
+        }
+      };
+      window.addEventListener('message', handleMessage);
+      return () => window.removeEventListener('message', handleMessage);
     }
   }, [currentSong, isPlaying]);
 
@@ -118,67 +149,123 @@ export default function Jukebox() {
       <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '1rem' }}>🎵 Джубокс</h1>
       <p style={{ textAlign: 'center', marginBottom: '2rem', color: '#9ca3af' }}>Кликни върху песен, за да я добавиш в списъка за изпълнение</p>
 
-      {/* БИБЛИОТЕКА С ПЕСНИ */}
-      <div style={{
-        display: 'flex',
-        overflowX: 'auto',
-        gap: '1rem',
-        padding: '1rem',
-        marginBottom: '2rem',
-        background: 'rgba(0,0,0,0.3)',
-        borderRadius: '16px',
-        alignItems: 'center'
-      }}>
-        {allSongs.map((song) => (
-          <div key={song.id} style={{ 
-            flex: '0 0 auto', 
-            textAlign: 'center',
-            cursor: 'pointer',
-            transition: 'all 0.3s',
+      {/* КАРУСЕЛ С ПЕСНИ */}
+      <div style={{ position: 'relative', marginBottom: '2rem' }}>
+        {/* Стрелка наляво */}
+        <button
+          onClick={() => scroll('left')}
+          disabled={!canScrollLeft}
+          style={{
+            position: 'absolute',
+            left: '-20px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 10,
+            background: 'rgba(0,0,0,0.5)',
+            border: 'none',
+            borderRadius: '50%',
+            width: '40px',
+            height: '40px',
             display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center'
-          }} onClick={() => addToQueue(song)}>
-            {/* ВЕРТИКАЛЕН БАДЖ (30x80) - ХОРИЗОНТАЛЕН ТЕКСТ, ЗАВЪРТЯН НА 90° */}
-            <div style={{
-              width: '30px',
-              height: '80px',
-              backgroundColor: '#bfdbfe',
-              borderRadius: '8px',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: canScrollLeft ? 'pointer' : 'not-allowed',
+            opacity: canScrollLeft ? 1 : 0.4,
+            transition: 'all 0.3s'
+          }}
+        >
+          ◀
+        </button>
+
+        {/* Контейнер с песни (хоризонтален скрол) */}
+        <div
+          ref={carouselRef}
+          onScroll={checkScrollButtons}
+          style={{
+            display: 'flex',
+            overflowX: 'auto',
+            gap: '1rem',
+            padding: '1rem',
+            background: 'rgba(0,0,0,0.3)',
+            borderRadius: '16px',
+            scrollBehavior: 'smooth',
+            scrollbarWidth: 'thin'
+          }}
+        >
+          {allSongs.map((song) => (
+            <div key={song.id} style={{ 
+              flex: '0 0 auto', 
+              textAlign: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.3s',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '8px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-              position: 'relative'
-            }}>
-              <span style={{
-                fontSize: '11px',
-                fontWeight: '500',
-                color: '#1e3a8a',
-                whiteSpace: 'nowrap',
-                display: 'inline-block',
-                transform: 'rotate(-90deg)',
-                transformOrigin: 'center center',
-                width: '80px',
-                textAlign: 'center'
+              flexDirection: 'column',
+              alignItems: 'center'
+            }} onClick={() => addToQueue(song)}>
+              <div style={{
+                width: '30px',
+                height: '80px',
+                backgroundColor: '#bfdbfe',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '8px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
               }}>
-                {truncateText(song.title, 12)}
-              </span>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: '500',
+                  color: '#1e3a8a',
+                  whiteSpace: 'nowrap',
+                  display: 'inline-block',
+                  transform: 'rotate(-90deg)',
+                  transformOrigin: 'center center',
+                  width: '80px',
+                  textAlign: 'center'
+                }}>
+                  {truncateText(song.title, 12)}
+                </span>
+              </div>
+              <img 
+                src={song.cover_url} 
+                alt={song.title}
+                style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '8px' }}
+                onError={(e) => e.target.src = 'https://via.placeholder.com/50'}
+              />
             </div>
-            {/* Тъмбнейл */}
-            <img 
-              src={song.cover_url} 
-              alt={song.title}
-              style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '8px' }}
-              onError={(e) => e.target.src = 'https://via.placeholder.com/50'}
-            />
-          </div>
-        ))}
+          ))}
+        </div>
+
+        {/* Стрелка надясно */}
+        <button
+          onClick={() => scroll('right')}
+          disabled={!canScrollRight}
+          style={{
+            position: 'absolute',
+            right: '-20px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 10,
+            background: 'rgba(0,0,0,0.5)',
+            border: 'none',
+            borderRadius: '50%',
+            width: '40px',
+            height: '40px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: canScrollRight ? 'pointer' : 'not-allowed',
+            opacity: canScrollRight ? 1 : 0.4,
+            transition: 'all 0.3s'
+          }}
+        >
+          ▶
+        </button>
       </div>
 
       {/* ОПАШКА ЗА ИЗПЪЛНЕНИЕ */}
-      <h2 style={{ textAlign: 'center', marginBottom: '1rem', fontSize: '1.5rem' }}>📋Лист: Избрани песни</h2>
+      <h2 style={{ textAlign: 'center', marginBottom: '1rem', fontSize: '1.5rem' }}>📋 Опашка за изпълнение</h2>
       <div style={{
         display: 'flex',
         overflowX: 'auto',
@@ -205,7 +292,6 @@ export default function Jukebox() {
             flexDirection: 'column',
             alignItems: 'center'
           }}>
-            {/* ВЕРТИКАЛЕН БАДЖ (30x80) - ХОРИЗОНТАЛЕН ТЕКСТ, ЗАВЪРТЯН НА 90° */}
             <div style={{
               width: '30px',
               height: '80px',
@@ -216,8 +302,7 @@ export default function Jukebox() {
               justifyContent: 'center',
               marginBottom: '8px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-              transition: 'background-color 0.3s',
-              position: 'relative'
+              transition: 'background-color 0.3s'
             }}>
               <span style={{
                 fontSize: '11px',
@@ -233,17 +318,14 @@ export default function Jukebox() {
                 {truncateText(song.title, 12)}
               </span>
             </div>
-            {/* Тъмбнейл */}
             <img 
               src={song.cover_url} 
               alt={song.title}
               style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '8px' }}
             />
-            {/* Индикатор за текуща песен */}
             {currentIndexInQueue === idx && (
               <div style={{ fontSize: '1.5rem', marginTop: '4px' }}>▼</div>
             )}
-            {/* Бутони за управление на опашката */}
             <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', marginTop: '8px' }}>
               <button onClick={() => moveUp(idx)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', fontSize: '10px' }}>↑</button>
               <button onClick={() => moveDown(idx)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', fontSize: '10px' }}>↓</button>
