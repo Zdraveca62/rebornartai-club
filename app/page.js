@@ -4,6 +4,11 @@ import { useEffect, useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
+
+const isLocalIp = (ip) => {
+  return !ip || ip === '::1' || ip === '127.0.0.1' || ip === 'localhost' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.');
+};
+
 export default function Home() {
   const [visitCount, setVisitCount] = useState(null);
   const [isNew, setIsNew] = useState(true);
@@ -52,108 +57,71 @@ const sendDuration = async (seconds, isFinal = false) => {
   }
 };
 
-  useEffect(() => {
-    startTimeRef.current = Date.now();
-    
-    heartbeatIntervalRef.current = setInterval(() => {
-      if (startTimeRef.current) {
-        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        sendDuration(elapsed);
+useEffect(() => {
+  if (pathname === '/admin' || pathname === '/admin-login' || pathname.startsWith('/admin')) {
+    console.log('⏭️ Пропускане на броене (административна страница)');
+    return;
+  }
+  
+  const trackVisitor = async () => {
+    try {
+      const lastVisit = localStorage.getItem('last_visit_time');
+      const now = Date.now();
+      const TEN_MINUTES = 10 * 60 * 1000;
+      
+      if (lastVisit && (now - parseInt(lastVisit)) < TEN_MINUTES) {
+        console.log('⏭️ Последното посещение е от по-малко от 10 минути, пропускам');
+        return;
       }
-    }, 15000);
-    
-    const handleBeforeUnload = () => {
-      if (heartbeatIntervalRef.current) {
-        clearInterval(heartbeatIntervalRef.current);
+      
+      console.log('📡 Започва проследяване...');
+      
+      const geoRes = await fetch('/api/proxy-geo');
+      const geoData = await geoRes.json();
+      console.log('📍 Локация (ip-api.com):', geoData);
+      
+      // Проверка за локален IP адрес (да не се записва)
+      if (isLocalIp(geoData.query)) {
+        console.log('⏭️ Пропускане на локален IP адрес:', geoData.query);
+        return;
       }
-      if (startTimeRef.current && !finalTimeSentRef.current) {
-        finalTimeSentRef.current = true;
-        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        sendDuration(elapsed, true);
+      
+      const userAgent = navigator.userAgent;
+      let deviceType = 'desktop';
+      if (/mobile|android|iphone|phone/i.test(userAgent)) deviceType = 'mobile';
+      else if (/tablet|ipad/i.test(userAgent)) deviceType = 'tablet';
+      
+      const response = await fetch('/api/visitors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ip: geoData.query,
+          country: geoData.country,
+          city: geoData.city,
+          region: geoData.regionName,
+          userAgent: userAgent,
+          deviceType: deviceType,
+          sessionId: sessionIdRef.current
+        })
+      });
+      
+      const result = await response.json();
+      console.log('📊 Резултат от API:', result);
+      
+      if (result.success) {
+        localStorage.setItem('last_visit_time', now.toString());
+        setVisitCount(result.visitCount);
+        setIsNew(result.isNew);
+        setShowBanner(true);
+        setTimeout(() => setShowBanner(false), 5000);
       }
-    };
-    
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    
-    return () => {
-      if (heartbeatIntervalRef.current) {
-        clearInterval(heartbeatIntervalRef.current);
-      }
-      if (startTimeRef.current && !finalTimeSentRef.current) {
-        finalTimeSentRef.current = true;
-        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        sendDuration(elapsed, true);
-      }
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (pathname === '/admin' || pathname === '/admin-login' || pathname.startsWith('/admin')) {
-      console.log('⏭️ Пропускане на броене (административна страница)');
-      return;
+    } catch (err) {
+      console.error('❌ Грешка при проследяване:', err);
     }
-    
-    const trackVisitor = async () => {
-      try {
-        const lastVisit = localStorage.getItem('last_visit_time');
-        const now = Date.now();
-        const TEN_MINUTES = 10 * 60 * 1000;
-        
-        if (lastVisit && (now - parseInt(lastVisit)) < TEN_MINUTES) {
-          console.log('⏭️ Последното посещение е от по-малко от 10 минути, пропускам');
-          return;
-        }
-        
-        console.log('📡 Започва проследяване...');
-        
-        const geoRes = await fetch('/api/proxy-geo');
-        const geoData = await geoRes.json();
-        console.log('📍 Локация (ip-api.com):', geoData);
-        
-        const userAgent = navigator.userAgent;
-          let deviceType = 'desktop';
-
-          // По-точна проверка за мобилни устройства
-          if (/Mobi|Android|iPhone|iPad|iPod|BlackBerry|Opera Mini|IEMobile|WPDesktop/i.test(userAgent)) {
-          deviceType = 'mobile';
-      }
-         // Специална проверка за таблети (ако искате да ги различавате)
-          else if (/Tablet|iPad/i.test(userAgent)) {
-          deviceType = 'tablet';
-          }
-        
-        const response = await fetch('/api/visitors', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ip: geoData.query,
-            country: geoData.country,
-            city: geoData.city,
-            region: geoData.regionName,
-            userAgent: userAgent,
-            deviceType: deviceType,
-            sessionId: sessionIdRef.current
-          })
-        });
-        
-        const result = await response.json();
-        console.log('📊 Резултат от API:', result);
-        
-        if (result.success) {
-          localStorage.setItem('last_visit_time', now.toString());
-          setVisitCount(result.visitCount);
-          setIsNew(result.isNew);
-          setShowBanner(true);
-          setTimeout(() => setShowBanner(false), 5000);
-        }
-      } catch (err) {
-        console.error('❌ Грешка при проследяване:', err);
-      }
-    };
-    
-    trackVisitor();
-  }, [pathname]);
+  };
+  
+  trackVisitor();
+}, [pathname]);
 
   return (
     <div style={{ height: '100vh', overflowY: 'scroll', scrollSnapType: 'y mandatory' }}>

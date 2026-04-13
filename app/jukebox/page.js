@@ -6,22 +6,179 @@ import Link from 'next/link';
 export default function Jukebox() {
   const [allSongs, setAllSongs] = useState([]);
   const [queue, setQueue] = useState([]);
+  const queueRef = useRef(queue);
   const [currentIndexInQueue, setCurrentIndexInQueue] = useState(0);
   const [loading, setLoading] = useState(true);
   const [shuffle, setShuffle] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [scrollPosition, setScrollPosition] = useState(0);
   const carouselRef = useRef(null);
-  const playerRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [playerKey, setPlayerKey] = useState(0);
+  const timerRef = useRef(null);
+  const playerRef = useRef(null);
   const [playerReady, setPlayerReady] = useState(false);
+
+  // Синхронизиране на queueRef с queue
+  useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
 
   const truncateText = (text, maxLength = 12) => {
     if (!text) return '';
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
   };
+
+  const currentSong = queue[currentIndexInQueue];
+
+  const clearTimer = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const startTimer = () => {
+    clearTimer();
+    const duration = 10000;
+    console.log(`⏰ Стартирам таймер за ${duration / 1000} секунди`);
+    
+    timerRef.current = setTimeout(() => {
+      console.log('🏁 Таймерът изтече, превключвам към следваща песен');
+      playNext();
+    }, duration);
+  };
+
+  const playNext = () => {
+    console.log('⏩ playNext извикана');
+    const currentQueue = queueRef.current;
+    if (currentQueue.length === 0) {
+      console.log('⚠️ Опашката е празна');
+      return;
+    }
+    
+    setCurrentIndexInQueue(prevIndex => {
+      let nextIndex = prevIndex + 1;
+      if (shuffle && currentQueue.length > 1) {
+        let newIndex;
+        do {
+          newIndex = Math.floor(Math.random() * currentQueue.length);
+        } while (newIndex === prevIndex);
+        nextIndex = newIndex;
+      }
+      if (nextIndex >= currentQueue.length) {
+        nextIndex = 0;
+      }
+      
+      console.log(`🔄 Превключвам от индекс ${prevIndex} на ${nextIndex}`);
+      clearTimer();
+      setPlayerKey(p => p + 1);
+      
+      return nextIndex;
+    });
+  };
+
+  const playPrev = () => {
+    console.log('⏪ playPrev извикана');
+    const currentQueue = queueRef.current;
+    if (currentQueue.length === 0) return;
+    
+    setCurrentIndexInQueue(prevIndex => {
+      let prevIndexNew = prevIndex - 1;
+      if (prevIndexNew < 0) prevIndexNew = currentQueue.length - 1;
+      
+      clearTimer();
+      setPlayerKey(p => p + 1);
+      
+      return prevIndexNew;
+    });
+  };
+
+  // Зареждане на YouTube IFrame API
+  useEffect(() => {
+    if (window.YT && window.YT.Player) {
+      setPlayerReady(true);
+      return;
+    }
+
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    window.onYouTubeIframeAPIReady = () => {
+      console.log('🎬 YouTube API е готов');
+      setPlayerReady(true);
+    };
+
+    return () => {
+      delete window.onYouTubeIframeAPIReady;
+    };
+  }, []);
+
+  // Създаване на YouTube плейър
+  useEffect(() => {
+    if (!playerReady || !currentSong) return;
+
+    if (playerRef.current && typeof playerRef.current.destroy === 'function') {
+      playerRef.current.destroy();
+    }
+
+    playerRef.current = new window.YT.Player('youtube-player', {
+      height: '200',
+      width: '100%',
+      videoId: currentSong.youtube_id,
+      playerVars: {
+        autoplay: isPlaying ? 1 : 0,
+        controls: 1,
+        rel: 0,
+        modestbranding: 1
+      },
+      events: {
+        onReady: (event) => {
+          console.log('✅ Плейърът е готов');
+          if (isPlaying) {
+            event.target.playVideo();
+          }
+        },
+        onStateChange: (event) => {
+          console.log('📺 Състояние на плейъра:', event.data);
+          if (event.data === 1) {
+            setIsPlaying(true);
+            startTimer();
+          } else if (event.data === 2) {
+            setIsPlaying(false);
+            clearTimer();
+          } else if (event.data === 0) {
+            console.log('🏁 Видеото свърши чрез API');
+            clearTimer();
+            playNext();
+          }
+        },
+        onError: (event) => {
+          console.error('❌ Грешка в YouTube плейъра:', event.data);
+        }
+      }
+    });
+
+    return () => {
+      if (playerRef.current && typeof playerRef.current.destroy === 'function') {
+        playerRef.current.destroy();
+      }
+    };
+  }, [playerReady, currentSong]);
+
+  // Синхронизиране на isPlaying с плейъра
+  useEffect(() => {
+    if (!playerRef.current || typeof playerRef.current.playVideo !== 'function') return;
+    
+    if (isPlaying) {
+      playerRef.current.playVideo();
+    } else {
+      playerRef.current.pauseVideo();
+    }
+  }, [isPlaying]);
 
   // Зареждане на песните
   useEffect(() => {
@@ -32,50 +189,6 @@ export default function Jukebox() {
         setLoading(false);
       });
   }, []);
-
-  // Зареждане на YouTube IFrame API
-  useEffect(() => {
-    if (!window.YT) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      const firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-      
-      window.onYouTubeIframeAPIReady = () => {
-        setPlayerReady(true);
-      };
-    } else {
-      setPlayerReady(true);
-    }
-  }, []);
-
-  // Създаване на YouTube плейър
-  useEffect(() => {
-    if (playerReady && currentSong && window.YT && window.YT.Player) {
-      if (playerRef.current && playerRef.current.destroy) {
-        playerRef.current.destroy();
-      }
-      
-      playerRef.current = new window.YT.Player('youtube-player', {
-        height: '200',
-        width: '100%',
-        videoId: currentSong.youtube_id,
-        playerVars: {
-          autoplay: isPlaying ? 1 : 0,
-          controls: 1,
-          rel: 0
-        },
-        events: {
-          onStateChange: (event) => {
-            // Видеото е свършило
-            if (event.data === window.YT.PlayerState.ENDED) {
-              playNext();
-            }
-          }
-        }
-      });
-    }
-  }, [playerReady, currentSong, isPlaying]);
 
   const checkScrollButtons = () => {
     if (carouselRef.current) {
@@ -101,61 +214,53 @@ export default function Jukebox() {
   };
 
   const addToQueue = (song) => {
+    console.log(`➕ Добавям в опашката: ${song.title}`);
     setQueue(prev => [...prev, song]);
   };
 
   const removeFromQueue = (index) => {
-    const newQueue = [...queue];
-    newQueue.splice(index, 1);
-    setQueue(newQueue);
+    console.log(`❌ Премахвам от опашката индекс ${index}`);
+    setQueue(prev => {
+      const newQueue = [...prev];
+      newQueue.splice(index, 1);
+      return newQueue;
+    });
     if (currentIndexInQueue >= index && currentIndexInQueue > 0) {
       setCurrentIndexInQueue(prev => prev - 1);
+      setPlayerKey(p => p + 1);
     }
   };
 
   const moveUp = (index) => {
+    console.log(`⬆️ Местя нагоре индекс ${index}`);
     if (index === 0) return;
-    const newQueue = [...queue];
-    [newQueue[index - 1], newQueue[index]] = [newQueue[index], newQueue[index - 1]];
-    setQueue(newQueue);
-    if (currentIndexInQueue === index) setCurrentIndexInQueue(index - 1);
-    else if (currentIndexInQueue === index - 1) setCurrentIndexInQueue(index);
+    setQueue(prev => {
+      const newQueue = [...prev];
+      [newQueue[index - 1], newQueue[index]] = [newQueue[index], newQueue[index - 1]];
+      return newQueue;
+    });
+    if (currentIndexInQueue === index) {
+      setCurrentIndexInQueue(prev => prev - 1);
+    } else if (currentIndexInQueue === index - 1) {
+      setCurrentIndexInQueue(prev => prev + 1);
+    }
+    setPlayerKey(p => p + 1);
   };
 
   const moveDown = (index) => {
+    console.log(`⬇️ Местя надолу индекс ${index}`);
     if (index === queue.length - 1) return;
-    const newQueue = [...queue];
-    [newQueue[index + 1], newQueue[index]] = [newQueue[index], newQueue[index + 1]];
-    setQueue(newQueue);
-    if (currentIndexInQueue === index) setCurrentIndexInQueue(index + 1);
-    else if (currentIndexInQueue === index + 1) setCurrentIndexInQueue(index);
-  };
-
-  const currentSong = queue[currentIndexInQueue];
-
-  const playNext = () => {
-    if (queue.length === 0) return;
-    let nextIndex = currentIndexInQueue + 1;
-    if (shuffle && queue.length > 1) {
-      let newIndex;
-      do {
-        newIndex = Math.floor(Math.random() * queue.length);
-      } while (newIndex === currentIndexInQueue);
-      nextIndex = newIndex;
+    setQueue(prev => {
+      const newQueue = [...prev];
+      [newQueue[index + 1], newQueue[index]] = [newQueue[index], newQueue[index + 1]];
+      return newQueue;
+    });
+    if (currentIndexInQueue === index) {
+      setCurrentIndexInQueue(prev => prev + 1);
+    } else if (currentIndexInQueue === index + 1) {
+      setCurrentIndexInQueue(prev => prev - 1);
     }
-    if (nextIndex >= queue.length) {
-      nextIndex = 0;
-    }
-    setCurrentIndexInQueue(nextIndex);
-    setIsPlaying(true);
-  };
-
-  const playPrev = () => {
-    if (queue.length === 0) return;
-    let prevIndex = currentIndexInQueue - 1;
-    if (prevIndex < 0) prevIndex = queue.length - 1;
-    setCurrentIndexInQueue(prevIndex);
-    setIsPlaying(true);
+    setPlayerKey(p => p + 1);
   };
 
   if (loading) return <div style={{ minHeight: '100vh', background: '#1e1b4b', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Зареждане на музикалната библиотека...</div>;
@@ -368,19 +473,9 @@ export default function Jukebox() {
         }}>
           <h2 style={{ textAlign: 'center', marginBottom: '1rem' }}>🎧 {currentSong.title}</h2>
           <div id="youtube-player" style={{ marginBottom: '1rem' }}></div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-            <button onClick={() => {
-              if (playerRef.current && playerRef.current.pauseVideo) {
-                playerRef.current.pauseVideo();
-                setIsPlaying(false);
-              }
-            }} style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>⏸️ Пауза</button>
-            <button onClick={() => {
-              if (playerRef.current && playerRef.current.playVideo) {
-                playerRef.current.playVideo();
-                setIsPlaying(true);
-              }
-            }} style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>▶️ Плей</button>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+            <button onClick={() => setIsPlaying(false)} style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>⏸️ Пауза</button>
+            <button onClick={() => setIsPlaying(true)} style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>▶️ Плей</button>
             <button onClick={playNext} style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>⏩ Напред</button>
             <button onClick={playPrev} style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>⏪ Назад</button>
             <button onClick={() => setShuffle(!shuffle)} style={{ background: shuffle ? '#ec4899' : '#8b5cf6', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>🔀 Разбъркай</button>
