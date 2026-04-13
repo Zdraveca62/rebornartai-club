@@ -15,6 +15,7 @@ export default function Jukebox() {
   const playerRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [playerReady, setPlayerReady] = useState(false);
 
   const truncateText = (text, maxLength = 12) => {
     if (!text) return '';
@@ -22,6 +23,7 @@ export default function Jukebox() {
     return text.substring(0, maxLength) + '...';
   };
 
+  // Зареждане на песните
   useEffect(() => {
     fetch('/api/songs')
       .then(res => res.json())
@@ -31,7 +33,50 @@ export default function Jukebox() {
       });
   }, []);
 
-  // Проверка дали може да се скролва наляво/надясно
+  // Зареждане на YouTube IFrame API
+  useEffect(() => {
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      
+      window.onYouTubeIframeAPIReady = () => {
+        setPlayerReady(true);
+      };
+    } else {
+      setPlayerReady(true);
+    }
+  }, []);
+
+  // Създаване на YouTube плейър
+  useEffect(() => {
+    if (playerReady && currentSong && window.YT && window.YT.Player) {
+      if (playerRef.current && playerRef.current.destroy) {
+        playerRef.current.destroy();
+      }
+      
+      playerRef.current = new window.YT.Player('youtube-player', {
+        height: '200',
+        width: '100%',
+        videoId: currentSong.youtube_id,
+        playerVars: {
+          autoplay: isPlaying ? 1 : 0,
+          controls: 1,
+          rel: 0
+        },
+        events: {
+          onStateChange: (event) => {
+            // Видеото е свършило
+            if (event.data === window.YT.PlayerState.ENDED) {
+              playNext();
+            }
+          }
+        }
+      });
+    }
+  }, [playerReady, currentSong, isPlaying]);
+
   const checkScrollButtons = () => {
     if (carouselRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
@@ -113,23 +158,6 @@ export default function Jukebox() {
     setIsPlaying(true);
   };
 
-  // Автоматично пускане на следваща песен при край на текущата
-  useEffect(() => {
-    if (playerRef.current && currentSong) {
-      const iframe = playerRef.current;
-      iframe.src = `https://www.youtube.com/embed/${currentSong.youtube_id}?autoplay=${isPlaying ? 1 : 0}&enablejsapi=1`;
-      
-      // Добавяме listener за край на видеото
-      const handleMessage = (event) => {
-        if (event.data === 'ended') {
-          playNext();
-        }
-      };
-      window.addEventListener('message', handleMessage);
-      return () => window.removeEventListener('message', handleMessage);
-    }
-  }, [currentSong, isPlaying]);
-
   if (loading) return <div style={{ minHeight: '100vh', background: '#1e1b4b', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Зареждане на музикалната библиотека...</div>;
 
   return (
@@ -151,7 +179,6 @@ export default function Jukebox() {
 
       {/* КАРУСЕЛ С ПЕСНИ */}
       <div style={{ position: 'relative', marginBottom: '2rem' }}>
-        {/* Стрелка наляво */}
         <button
           onClick={() => scroll('left')}
           disabled={!canScrollLeft}
@@ -170,14 +197,12 @@ export default function Jukebox() {
             alignItems: 'center',
             justifyContent: 'center',
             cursor: canScrollLeft ? 'pointer' : 'not-allowed',
-            opacity: canScrollLeft ? 1 : 0.4,
-            transition: 'all 0.3s'
+            opacity: canScrollLeft ? 1 : 0.4
           }}
         >
           ◀
         </button>
 
-        {/* Контейнер с песни (хоризонтален скрол) */}
         <div
           ref={carouselRef}
           onScroll={checkScrollButtons}
@@ -197,7 +222,6 @@ export default function Jukebox() {
               flex: '0 0 auto', 
               textAlign: 'center',
               cursor: 'pointer',
-              transition: 'all 0.3s',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center'
@@ -237,7 +261,6 @@ export default function Jukebox() {
           ))}
         </div>
 
-        {/* Стрелка надясно */}
         <button
           onClick={() => scroll('right')}
           disabled={!canScrollRight}
@@ -256,8 +279,7 @@ export default function Jukebox() {
             alignItems: 'center',
             justifyContent: 'center',
             cursor: canScrollRight ? 'pointer' : 'not-allowed',
-            opacity: canScrollRight ? 1 : 0.4,
-            transition: 'all 0.3s'
+            opacity: canScrollRight ? 1 : 0.4
           }}
         >
           ▶
@@ -301,8 +323,7 @@ export default function Jukebox() {
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: '8px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-              transition: 'background-color 0.3s'
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
             }}>
               <span style={{
                 fontSize: '11px',
@@ -346,26 +367,19 @@ export default function Jukebox() {
           margin: '0 auto'
         }}>
           <h2 style={{ textAlign: 'center', marginBottom: '1rem' }}>🎧 {currentSong.title}</h2>
-          <div style={{ marginBottom: '1rem' }}>
-            <iframe
-              ref={playerRef}
-              width="100%"
-              height="200"
-              src={`https://www.youtube.com/embed/${currentSong.youtube_id}?autoplay=${isPlaying ? 1 : 0}&enablejsapi=1`}
-              title={currentSong.title}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            ></iframe>
-          </div>
+          <div id="youtube-player" style={{ marginBottom: '1rem' }}></div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
             <button onClick={() => {
-              if (playerRef.current) playerRef.current.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
-              setIsPlaying(false);
+              if (playerRef.current && playerRef.current.pauseVideo) {
+                playerRef.current.pauseVideo();
+                setIsPlaying(false);
+              }
             }} style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>⏸️ Пауза</button>
             <button onClick={() => {
-              if (playerRef.current) playerRef.current.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
-              setIsPlaying(true);
+              if (playerRef.current && playerRef.current.playVideo) {
+                playerRef.current.playVideo();
+                setIsPlaying(true);
+              }
             }} style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>▶️ Плей</button>
             <button onClick={playNext} style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>⏩ Напред</button>
             <button onClick={playPrev} style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>⏪ Назад</button>
