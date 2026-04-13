@@ -84,78 +84,88 @@ export default function AdminPanel() {
   };
 
   const fetchStats = async () => {
-    try {
-      const visitorsRes = await fetch('/api/visitors');
-      const visitorsData = await visitorsRes.json();
-      
-      const durationRes = await fetch('/api/visit-duration');
-      const durations = await durationRes.json();
-      
-      // Групираме времената по IP адрес
-      const ipDurationMap = new Map();
-      durations.forEach(d => {
-        const ip = d.ip_address;
-        if (ip) {
-          const current = ipDurationMap.get(ip) || 0;
-          ipDurationMap.set(ip, current + d.duration_seconds);
-        }
-      });
-      
-      const locationMap = new Map();
-      const todayISO = new Date().toISOString().split('T')[0];
-      
-      if (visitorsData.allVisitors) {
-        visitorsData.allVisitors.forEach(visitor => {
-          const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}`;
-          const visitISO = new Date(visitor.last_visit).toISOString().split('T')[0];
-          const isToday = visitISO === todayISO;
-          
-          const realSeconds = ipDurationMap.get(visitor.ip_address) || 0;
-          
-          if (!locationMap.has(key)) {
-            locationMap.set(key, {
-              country: visitor.country || 'Unknown',
-              city: visitor.city || 'Unknown',
-              todayVisits: 0,
-              todaySeconds: 0,
-              totalVisits: 0,
-              totalSeconds: 0,
-              lastVisit: visitor.last_visit
-            });
+  try {
+    const visitorsRes = await fetch('/api/visitors');
+    const visitorsData = await visitorsRes.json();
+    
+    const durationRes = await fetch('/api/visit-duration');
+    const durations = await durationRes.json();
+    
+    // Групираме времената по IP + device_type
+    const ipDeviceDurationMap = new Map();
+    durations.forEach(d => {
+      const key = `${d.ip_address}|${d.device_type || 'desktop'}`;
+      const current = ipDeviceDurationMap.get(key) || 0;
+      ipDeviceDurationMap.set(key, current + d.duration_seconds);
+    });
+    
+    const locationMap = new Map();
+    const todayISO = new Date().toISOString().split('T')[0];
+    
+    if (visitorsData.allVisitors) {
+      visitorsData.allVisitors.forEach(visitor => {
+        const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}|${visitor.device_type || 'desktop'}`;
+        const visitISO = new Date(visitor.last_visit).toISOString().split('T')[0];
+        const isToday = visitISO === todayISO;
+        
+        const totalSeconds = ipDeviceDurationMap.get(`${visitor.ip_address}|${visitor.device_type}`) || 0;
+        
+        // Изчисляваме днешните секунди
+        let todaySeconds = 0;
+        durations.forEach(d => {
+          if (d.ip_address === visitor.ip_address && d.device_type === visitor.device_type) {
+            const durationDate = new Date(d.created_at).toISOString().split('T')[0];
+            if (durationDate === todayISO) {
+              todaySeconds += d.duration_seconds;
+            }
           }
-          
-          const loc = locationMap.get(key);
-          if (isToday) {
-            loc.todayVisits += (visitor.visit_count || 1);
-            loc.todaySeconds += realSeconds;
-          }
-          loc.totalVisits += (visitor.visit_count || 1);
-          loc.totalSeconds += realSeconds;
-          
-          if (new Date(visitor.last_visit) > new Date(loc.lastVisit)) {
-            loc.lastVisit = visitor.last_visit;
-          }
-          
-          locationMap.set(key, loc);
         });
-      }
-      
-      let locationStats = Array.from(locationMap.values())
-        .sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
-      
-      const totalSeconds = locationStats.reduce((sum, loc) => sum + loc.totalSeconds, 0);
-      
-      setStats({ 
-        ...visitorsData, 
-        totalSeconds,
-        locationStats,
-        currentPage: 1,
-        itemsPerPage: 5
+        
+        if (!locationMap.has(key)) {
+          locationMap.set(key, {
+            country: visitor.country || 'Unknown',
+            city: visitor.city || 'Unknown',
+            deviceType: visitor.device_type || 'desktop',
+            todayVisits: 0,
+            todaySeconds: 0,
+            totalVisits: 0,
+            totalSeconds: 0,
+            lastVisit: visitor.last_visit
+          });
+        }
+        
+        const loc = locationMap.get(key);
+        if (isToday) {
+          loc.todayVisits += (visitor.visit_count || 1);
+          loc.todaySeconds += todaySeconds;
+        }
+        loc.totalVisits += (visitor.visit_count || 1);
+        loc.totalSeconds += totalSeconds;
+        
+        if (new Date(visitor.last_visit) > new Date(loc.lastVisit)) {
+          loc.lastVisit = visitor.last_visit;
+        }
+        
+        locationMap.set(key, loc);
       });
-    } catch (error) {
-      console.error('Грешка при зареждане на статистика:', error);
     }
-  };
+    
+    let locationStats = Array.from(locationMap.values())
+      .sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
+    
+    const totalSeconds = locationStats.reduce((sum, loc) => sum + loc.totalSeconds, 0);
+    
+    setStats({ 
+      ...visitorsData, 
+      totalSeconds,
+      locationStats,
+      currentPage: 1,
+      itemsPerPage: 5
+    });
+  } catch (error) {
+    console.error('Грешка при зареждане на статистика:', error);
+  }
+};
 
   useEffect(() => {
     const checkAuth = async () => {

@@ -54,19 +54,18 @@ export async function POST(request) {
   try {
     const { ip, country, city, region, userAgent, deviceType, sessionId } = await request.json();
     
-    console.log('📱 Получени данни:', { ip, country, city, deviceType, sessionId });
-    
+    // ТЪРСИМ ПО IP + device_type (за да имаме отделни записи за десктоп и мобилен)
     const { data: existing } = await supabase
       .from('visitors')
       .select('id, visit_count')
       .eq('ip_address', ip)
+      .eq('device_type', deviceType)
       .maybeSingle();
     
     const now = new Date().toISOString();
     
     if (existing) {
       const newCount = existing.visit_count + 1;
-      console.log(`📊 Обновяване на IP ${ip}: посещение ${newCount}`);
       
       await supabase
         .from('visitors')
@@ -77,7 +76,6 @@ export async function POST(request) {
           city, 
           region, 
           user_agent: userAgent,
-          device_type: deviceType,
           session_id: sessionId
         })
         .eq('id', existing.id);
@@ -89,8 +87,6 @@ export async function POST(request) {
         deviceType 
       });
     } else {
-      console.log(`📊 Нов IP: ${ip}`);
-      
       await supabase.from('visitors').insert([{
         ip_address: ip,
         country,
