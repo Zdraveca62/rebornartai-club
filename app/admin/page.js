@@ -139,10 +139,13 @@ const fetchStats = async () => {
         }
         
         const loc = locationMap.get(key);
+        
+        // САМО АКО Е ОТ ДНЕС, добавяме към todayVisits и todaySeconds
         if (isToday) {
           loc.todayVisits += (visitor.visit_count || 1);
           loc.todaySeconds += todaySeconds;
         }
+        // totalVisits и totalSeconds се добавят ВИНАГИ
         loc.totalVisits += (visitor.visit_count || 1);
         loc.totalSeconds += totalSeconds;
         
