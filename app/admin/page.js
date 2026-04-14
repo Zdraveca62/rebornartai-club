@@ -37,14 +37,25 @@ const formatDuration = (totalSeconds) => {
   return `${seconds}s`;
 };
 
-// Функция за получаване на текущия ден и час
+// Функция за получаване на текущия ден и час (Ирландска часова зона)
 const getCurrentDateTime = () => {
   const now = new Date();
-  const day = now.getDate();
-  const month = now.toLocaleString('default', { month: 'long' });
-  const hours = now.getHours().toString().padStart(2, '0');
-  const minutes = now.getMinutes().toString().padStart(2, '0');
+  const irishNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
+  const day = irishNow.getDate();
+  const month = irishNow.toLocaleString('default', { month: 'long' });
+  const hours = irishNow.getHours().toString().padStart(2, '0');
+  const minutes = irishNow.getMinutes().toString().padStart(2, '0');
   return `${day} ${month}, ${hours}:${minutes}`;
+};
+
+// Функция за получаване на днешната дата в Ирландска часова зона (YYYY-MM-DD)
+const getTodayIrishDate = () => {
+  const now = new Date();
+  const irishNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
+  const year = irishNow.getFullYear();
+  const month = String(irishNow.getMonth() + 1).padStart(2, '0');
+  const day = String(irishNow.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 export default function AdminPanel() {
@@ -83,96 +94,97 @@ export default function AdminPanel() {
     setVideos(sortedVideos);
   };
 
-const fetchStats = async () => {
-  try {
-    const visitorsRes = await fetch('/api/visitors');
-    const visitorsData = await visitorsRes.json();
-    
-    const durationRes = await fetch('/api/visit-duration');
-    const durations = await durationRes.json();
-    
-    // Групираме времената по IP + device_type
-    const totalDurationMap = new Map();
-    const todayDurationMap = new Map();
-    const todayIrishDate = formatDate();
-    
-    durations.forEach(d => {
-      const key = `${d.ip_address}|${d.device_type || 'desktop'}`;
-      const durationDate = new Date(d.created_at).toISOString().split('T')[0];
+  const fetchStats = async () => {
+    try {
+      const visitorsRes = await fetch('/api/visitors');
+      const visitorsData = await visitorsRes.json();
       
-      const currentTotal = totalDurationMap.get(key) || 0;
-      totalDurationMap.set(key, currentTotal + d.duration_seconds);
+      const durationRes = await fetch('/api/visit-duration');
+      const durations = await durationRes.json();
       
-      if (durationDate === todayIrishDate) {
-        const currentToday = todayDurationMap.get(key) || 0;
-        todayDurationMap.set(key, currentToday + d.duration_seconds);
-      }
-    });
-    
-    const locationMap = new Map();
-    
-    if (visitorsData.allVisitors) {
-      visitorsData.allVisitors.forEach(visitor => {
-        const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}|${visitor.device_type || 'desktop'}`;
-        const deviceKey = `${visitor.ip_address}|${visitor.device_type || 'desktop'}`;
+      // Групираме времената по IP + device_type
+      const totalDurationMap = new Map();
+      const todayDurationMap = new Map();
+      const todayIrishDate = getTodayIrishDate();
+      
+      durations.forEach(d => {
+        const key = `${d.ip_address}|${d.device_type || 'desktop'}`;
+        const durationDate = new Date(d.created_at).toISOString().split('T')[0];
         
-        // Проверка дали посещението е от днес (Ирландска часова зона)
-        const visitDate = new Date(visitor.last_visit);
-        const irishVisitDate = new Date(visitDate.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
-        const visitDateStr = `${irishVisitDate.getFullYear()}-${String(irishVisitDate.getMonth() + 1).padStart(2, '0')}-${String(irishVisitDate.getDate()).padStart(2, '0')}`;
-        const isToday = visitDateStr === todayIrishDate;
+        const currentTotal = totalDurationMap.get(key) || 0;
+        totalDurationMap.set(key, currentTotal + d.duration_seconds);
         
-        const totalSeconds = totalDurationMap.get(deviceKey) || 0;
-        const todaySeconds = todayDurationMap.get(deviceKey) || 0;
-        
-        if (!locationMap.has(key)) {
-          locationMap.set(key, {
-            country: visitor.country || 'Unknown',
-            city: visitor.city || 'Unknown',
-            deviceType: visitor.device_type || 'desktop',
-            todayVisits: 0,
-            todaySeconds: 0,
-            totalVisits: 0,
-            totalSeconds: 0,
-            lastVisit: visitor.last_visit
-          });
+        if (durationDate === todayIrishDate) {
+          const currentToday = todayDurationMap.get(key) || 0;
+          todayDurationMap.set(key, currentToday + d.duration_seconds);
         }
-        
-        const loc = locationMap.get(key);
-        
-        // САМО АКО Е ОТ ДНЕС, добавяме към todayVisits и todaySeconds
-        if (isToday) {
-          loc.todayVisits += (visitor.visit_count || 1);
-          loc.todaySeconds += todaySeconds;
-        }
-        // totalVisits и totalSeconds се добавят ВИНАГИ
-        loc.totalVisits += (visitor.visit_count || 1);
-        loc.totalSeconds += totalSeconds;
-        
-        if (new Date(visitor.last_visit) > new Date(loc.lastVisit)) {
-          loc.lastVisit = visitor.last_visit;
-        }
-        
-        locationMap.set(key, loc);
       });
+      
+      const locationMap = new Map();
+      
+      if (visitorsData.allVisitors) {
+        visitorsData.allVisitors.forEach(visitor => {
+          const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}|${visitor.device_type || 'desktop'}`;
+          const deviceKey = `${visitor.ip_address}|${visitor.device_type || 'desktop'}`;
+          
+          // Проверка дали посещението е от днес (Ирландска часова зона)
+          const visitDate = new Date(visitor.last_visit);
+          const irishVisitDate = new Date(visitDate.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
+          const visitDateStr = `${irishVisitDate.getFullYear()}-${String(irishVisitDate.getMonth() + 1).padStart(2, '0')}-${String(irishVisitDate.getDate()).padStart(2, '0')}`;
+          const isToday = visitDateStr === todayIrishDate;
+          
+          const totalSeconds = totalDurationMap.get(deviceKey) || 0;
+          const todaySeconds = todayDurationMap.get(deviceKey) || 0;
+          
+          if (!locationMap.has(key)) {
+            locationMap.set(key, {
+              country: visitor.country || 'Unknown',
+              city: visitor.city || 'Unknown',
+              deviceType: visitor.device_type || 'desktop',
+              todayVisits: 0,
+              todaySeconds: 0,
+              totalVisits: 0,
+              totalSeconds: 0,
+              lastVisit: visitor.last_visit
+            });
+          }
+          
+          const loc = locationMap.get(key);
+          
+          // САМО АКО Е ОТ ДНЕС, добавяме към todayVisits и todaySeconds
+          if (isToday) {
+            loc.todayVisits += (visitor.visit_count || 1);
+            loc.todaySeconds += todaySeconds;
+          }
+          // totalVisits и totalSeconds се добавят ВИНАГИ
+          loc.totalVisits += (visitor.visit_count || 1);
+          loc.totalSeconds += totalSeconds;
+          
+          if (new Date(visitor.last_visit) > new Date(loc.lastVisit)) {
+            loc.lastVisit = visitor.last_visit;
+          }
+          
+          locationMap.set(key, loc);
+        });
+      }
+      
+      let locationStats = Array.from(locationMap.values())
+        .sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
+      
+      const totalSeconds = locationStats.reduce((sum, loc) => sum + loc.totalSeconds, 0);
+      
+      setStats({ 
+        totalVisits: visitorsData.totalVisits || 0,
+        totalSeconds,
+        deviceStats: visitorsData.deviceStats || { desktop: 0, mobile: 0, tablet: 0 },
+        locationStats,
+        currentPage: 1,
+        itemsPerPage: 5
+      });
+    } catch (error) {
+      console.error('Грешка при зареждане на статистика:', error);
     }
-    
-    let locationStats = Array.from(locationMap.values())
-      .sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
-    
-    const totalSeconds = locationStats.reduce((sum, loc) => sum + loc.totalSeconds, 0);
-    
-    setStats({ 
-      ...visitorsData, 
-      totalSeconds,
-      locationStats,
-      currentPage: 1,
-      itemsPerPage: 5
-    });
-  } catch (error) {
-    console.error('Грешка при зареждане на статистика:', error);
-  }
-};
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -379,7 +391,7 @@ const fetchStats = async () => {
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}>Локация</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Днес ({getCurrentDateTime()})</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Сега ({getCurrentDateTime()})</th>
                     <th style={{ padding: '0.5rem', textAlign: 'center' }} colSpan="2">Общо</th>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}>Последно</th>
                   </tr>
@@ -392,28 +404,28 @@ const fetchStats = async () => {
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}></th>
                   </tr>
                 </thead>
-<tbody>
-  {paginatedLocations.length > 0 ? (
-    paginatedLocations.map((loc, idx) => (
-      <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-        <td style={{ padding: '0.5rem' }}>
-          {loc.deviceType === 'mobile' ? '📱' : loc.deviceType === 'tablet' ? '📟' : '💻'} {loc.city}, {loc.country}
-        </td>
-        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.todayVisits || 0}</td>
-        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{formatDuration(loc.todaySeconds || 0)}</td>
-        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.totalVisits || 0}</td>
-        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{formatDuration(loc.totalSeconds || 0)}</td>
-        <td style={{ padding: '0.5rem' }}>{formatDate(loc.lastVisit)}</td>
-      </tr>
-    ))
-  ) : (
-    <tr>
-      <td colSpan="6" style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af' }}>
-        Няма данни за посетители
-      </td>
-    </tr>
-  )}
-</tbody>
+                <tbody>
+                  {paginatedLocations.length > 0 ? (
+                    paginatedLocations.map((loc, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                        <td style={{ padding: '0.5rem' }}>
+                          {loc.deviceType === 'mobile' ? '📱' : loc.deviceType === 'tablet' ? '📟' : '💻'} {loc.city}, {loc.country}
+                        </td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.todayVisits || 0}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{formatDuration(loc.todaySeconds || 0)}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{loc.totalVisits || 0}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{formatDuration(loc.totalSeconds || 0)}</td>
+                        <td style={{ padding: '0.5rem' }}>{formatDate(loc.lastVisit)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="6" style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af' }}>
+                        Няма данни за посетители
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
               </table>
             </div>
 
@@ -473,7 +485,7 @@ const fetchStats = async () => {
               </div>
 
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ color: '#6793de', display: 'block', marginBottom: '0.5rem' }}>Език:</label>
+                <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Език:</label>
                 <select value={newSong.language} onChange={(e) => setNewSong({...newSong, language: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }}>
                   <option value="bg">🇧🇬 Български</option>
                   <option value="en">🇬🇧 English</option>
@@ -540,7 +552,7 @@ const fetchStats = async () => {
               </div>
 
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ color: '#6297f3', display: 'block', marginBottom: '0.5rem' }}>Категория:</label>
+                <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Категория:</label>
                 <select value={newVideo.category} onChange={(e) => setNewVideo({...newVideo, category: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }}>
                   <option value="impressions">🎹 Видео Импресии</option>
                   <option value="musicVideos">🎬 Музикални видеа</option>
@@ -560,7 +572,7 @@ const fetchStats = async () => {
               </h3>
               
               {paginatedVideos.length === 0 ? (
-                <p style={{ color: '#769de0' }}>Няма добавени видеа</p>
+                <p style={{ color: '#9ca3af' }}>Няма добавени видеа</p>
               ) : (
                 paginatedVideos.map(video => (
                   <div key={video.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
