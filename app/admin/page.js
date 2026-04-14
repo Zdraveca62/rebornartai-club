@@ -74,6 +74,16 @@ export default function AdminPanel() {
     currentPage: 1,
     itemsPerPage: 5
   });
+  const [blogPosts, setBlogPosts] = useState([]);
+const [newBlogPost, setNewBlogPost] = useState({ 
+  title: '', 
+  content: '', 
+  excerpt: '', 
+  tags: '', 
+  image: '' 
+});
+const [editingPost, setEditingPost] = useState(null);
+const [blogCurrentPage, setBlogCurrentPage] = useState(1);
   const [newSong, setNewSong] = useState({ title: '', youtubeId: '', lyrics: '', language: 'bg' });
   const [newVideo, setNewVideo] = useState({ title: '', youtubeId: '', description: '', category: 'impressions' });
   const [status, setStatus] = useState('');
@@ -95,6 +105,14 @@ export default function AdminPanel() {
     const sortedVideos = data.sort((a, b) => b.id - a.id);
     setVideos(sortedVideos);
   };
+
+  const fetchBlogPosts = async () => {
+  const res = await fetch('/api/blog');
+  const data = await res.json();
+  const posts = data.posts || data;
+  const sortedPosts = Array.isArray(posts) ? posts.sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
+  setBlogPosts(sortedPosts);
+};
 
   const fetchStats = async () => {
     try {
@@ -210,6 +228,7 @@ export default function AdminPanel() {
           await fetchSongs();
           await fetchVideos();
           await fetchStats();
+          await fetchBlogPosts();
         } else {
           sessionStorage.removeItem('admin_token');
           router.push('/admin-login?error=expired');
@@ -293,6 +312,87 @@ export default function AdminPanel() {
     }
   };
 
+  const handleAddBlogPost = async (e) => {
+  e.preventDefault();
+  setStatus('Запазване...');
+  
+  const tagsArray = newBlogPost.tags.split(',').map(tag => tag.trim());
+  
+  const res = await fetch('/api/blog', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: newBlogPost.title,
+      content: newBlogPost.content,
+      excerpt: newBlogPost.excerpt,
+      tags: tagsArray,
+      image: newBlogPost.image
+    })
+  });
+  
+  if (res.ok) {
+    await fetchBlogPosts();
+    setNewBlogPost({ title: '', content: '', excerpt: '', tags: '', image: '' });
+    setStatus('✅ Статията е добавена!');
+    setTimeout(() => setStatus(''), 3000);
+  } else {
+    setStatus('❌ Грешка при добавяне');
+  }
+};
+
+const handleDeleteBlogPost = async (id) => {
+  if (!confirm('Сигурни ли сте, че искате да изтриете тази статия?')) return;
+  const res = await fetch(`/api/blog?id=${id}`, { method: 'DELETE' });
+  if (res.ok) {
+    await fetchBlogPosts();
+    setStatus('✅ Статията е изтрита!');
+    setTimeout(() => setStatus(''), 3000);
+  }
+};
+
+   const handleEditBlogPost = (post) => {
+  setEditingPost(post);
+  setNewBlogPost({
+    title: post.title,
+    content: post.content,
+    excerpt: post.excerpt,
+    tags: post.tags?.join(', ') || '',
+    image: post.image || ''
+  });
+  setActiveTab('blog-edit');
+};
+
+const handleUpdateBlogPost = async (e) => {
+  e.preventDefault();
+  setStatus('Обновяване...');
+  
+  const tagsArray = newBlogPost.tags.split(',').map(tag => tag.trim());
+  
+  const res = await fetch('/api/blog', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: editingPost.id,
+      title: newBlogPost.title,
+      content: newBlogPost.content,
+      excerpt: newBlogPost.excerpt,
+      tags: tagsArray,
+      image: newBlogPost.image
+    })
+  });
+  
+  if (res.ok) {
+    await fetchBlogPosts();
+    setEditingPost(null);
+    setNewBlogPost({ title: '', content: '', excerpt: '', tags: '', image: '' });
+    setStatus('✅ Статията е обновена!');
+    setTimeout(() => setStatus(''), 3000);
+    setActiveTab('blog');
+  } else {
+    setStatus('❌ Грешка при обновяване');
+  }
+};
+
   const totalPages = Math.ceil((stats.locationStats?.length || 0) / stats.itemsPerPage);
   const paginatedLocations = stats.locationStats?.slice(
     (stats.currentPage - 1) * stats.itemsPerPage,
@@ -373,6 +473,14 @@ export default function AdminPanel() {
           <button onClick={() => setActiveTab('videos')} style={{ background: activeTab === 'videos' ? '#8b5cf6' : 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '1rem', borderRadius: '16px', cursor: 'pointer', fontSize: '1rem' }}>
             🎬 Добави видео
           </button>
+          <button onClick={() => setActiveTab('blog')} style={{ background: activeTab === 'blog' ? '#8b5cf6' : 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '1rem', borderRadius: '16px', cursor: 'pointer', fontSize: '1rem' }}>
+            📝 Управление на блог
+          </button>
+             <Link href="/admin-chat">
+               <button style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '1rem', borderRadius: '16px', cursor: 'pointer', fontSize: '1rem' }}>
+                💬 Чат с клиенти
+               </button>
+             </Link>
         </div>
 
         {activeTab === 'stats' && (
@@ -599,6 +707,106 @@ export default function AdminPanel() {
             </div>
           </div>
         )}
+
+             {activeTab === 'blog' && (
+  <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>📝 Управление на блог статии</h2>
+      <button 
+        onClick={() => { setEditingPost(null); setNewBlogPost({ title: '', content: '', excerpt: '', tags: '', image: '' }); setActiveTab('blog-add'); }}
+        style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.75rem 1.5rem', borderRadius: '8px', cursor: 'pointer' }}
+      >
+        + Нова статия
+      </button>
+    </div>
+    
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', color: 'white' }}>
+        <thead>
+          <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
+            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Заглавие</th>
+            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Тагове</th>
+            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Прегледи</th>
+            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Дата</th>
+            <th style={{ padding: '0.5rem', textAlign: 'center' }}>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {blogPosts.slice((blogCurrentPage - 1) * itemsPerPage, blogCurrentPage * itemsPerPage).map(post => (
+            <tr key={post.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+              <td style={{ padding: '0.5rem' }}>{post.title}</td>
+              <td style={{ padding: '0.5rem' }}>
+                {post.tags?.slice(0, 2).map(tag => (
+                  <span key={tag} style={{ background: 'rgba(139, 92, 246, 0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', marginRight: '0.25rem' }}>#{tag}</span>
+                ))}
+              </td>
+              <td style={{ padding: '0.5rem' }}>{post.views || 0}</td>
+              <td style={{ padding: '0.5rem' }}>{formatDate(post.date)}</td>
+              <td style={{ padding: '0.5rem', textAlign: 'center' }}>
+                <button onClick={() => handleEditBlogPost(post)} style={{ background: 'rgba(59, 130, 246, 0.5)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer', marginRight: '0.5rem' }}>✏️</button>
+                <button onClick={() => handleDeleteBlogPost(post.id)} style={{ background: 'rgba(239, 68, 68, 0.5)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer' }}>🗑️</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    
+    {Math.ceil(blogPosts.length / itemsPerPage) > 1 && (
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '1rem' }}>
+        <button onClick={() => setBlogCurrentPage(1)} disabled={blogCurrentPage === 1} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: blogCurrentPage === 1 ? 'not-allowed' : 'pointer' }}>«</button>
+        {[...Array(Math.ceil(blogPosts.length / itemsPerPage))].map((_, i) => (
+          <button key={i} onClick={() => setBlogCurrentPage(i + 1)} style={{ background: blogCurrentPage === i + 1 ? '#8b5cf6' : 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer' }}>{i + 1}</button>
+        ))}
+        <button onClick={() => setBlogCurrentPage(Math.ceil(blogPosts.length / itemsPerPage))} disabled={blogCurrentPage === Math.ceil(blogPosts.length / itemsPerPage)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: blogCurrentPage === Math.ceil(blogPosts.length / itemsPerPage) ? 'not-allowed' : 'pointer' }}>»</button>
+      </div>
+    )}
+  </div>
+)}
+
+{activeTab === 'blog-add' && (
+  <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem' }}>
+    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '1rem' }}>
+      {editingPost ? '✏️ Редактирай статия' : '📝 Нова блог статия'}
+    </h2>
+    
+    <form onSubmit={editingPost ? handleUpdateBlogPost : handleAddBlogPost}>
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Заглавие *</label>
+        <input type="text" value={newBlogPost.title} onChange={(e) => setNewBlogPost({...newBlogPost, title: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
+      </div>
+
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Кратко описание (excerpt) *</label>
+        <textarea value={newBlogPost.excerpt} onChange={(e) => setNewBlogPost({...newBlogPost, excerpt: e.target.value})} required rows="2" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
+      </div>
+
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Съдържание *</label>
+        <textarea value={newBlogPost.content} onChange={(e) => setNewBlogPost({...newBlogPost, content: e.target.value})} required rows="10" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white', fontFamily: 'monospace' }} />
+      </div>
+
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>Тагове (разделени със запетая)</label>
+        <input type="text" placeholder="AI музика, видео, уроци" value={newBlogPost.tags} onChange={(e) => setNewBlogPost({...newBlogPost, tags: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
+      </div>
+
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>URL на изображение (опционално)</label>
+        <input type="text" placeholder="/images/blog/ai-music.jpg" value={newBlogPost.image} onChange={(e) => setNewBlogPost({...newBlogPost, image: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }} />
+      </div>
+
+      <div style={{ display: 'flex', gap: '1rem' }}>
+        <button type="submit" style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.75rem 2rem', borderRadius: '8px', cursor: 'pointer' }}>
+          {editingPost ? '💾 Запази промените' : '+ Публикувай'}
+        </button>
+        <button type="button" onClick={() => { setEditingPost(null); setActiveTab('blog'); }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.75rem 2rem', borderRadius: '8px', cursor: 'pointer' }}>
+          Отказ
+        </button>
+      </div>
+    </form>
+  </div>
+)}
       </div>
     </div>
   );
