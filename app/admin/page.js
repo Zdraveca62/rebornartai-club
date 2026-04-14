@@ -131,9 +131,8 @@ export default function AdminPanel() {
           const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}|${visitor.device_type || 'desktop'}`;
           const deviceKey = `${visitor.ip_address}|${visitor.device_type || 'desktop'}`;
           
-          const visitDate = new Date(visitor.last_visit);
+          const visitDate = new Date(visitor.first_visit);
           const irishVisitDate = new Date(visitDate.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
-          // Формат YYYY-MM-DD за сравнение
           const visitDateStr = `${irishVisitDate.getFullYear()}-${String(irishVisitDate.getMonth() + 1).padStart(2, '0')}-${String(irishVisitDate.getDate()).padStart(2, '0')}`;
           const isToday = visitDateStr === todayIrishDate;
           
