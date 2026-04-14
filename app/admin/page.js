@@ -94,18 +94,16 @@ const fetchStats = async () => {
     // Групираме времената по IP + device_type
     const totalDurationMap = new Map();
     const todayDurationMap = new Map();
-    const todayISO = new Date().toISOString().split('T')[0];
+    const todayIrishDate = formatDate();
     
     durations.forEach(d => {
       const key = `${d.ip_address}|${d.device_type || 'desktop'}`;
       const durationDate = new Date(d.created_at).toISOString().split('T')[0];
       
-      // Общо време
       const currentTotal = totalDurationMap.get(key) || 0;
       totalDurationMap.set(key, currentTotal + d.duration_seconds);
       
-      // Днешно време
-      if (durationDate === todayISO) {
+      if (durationDate === todayIrishDate) {
         const currentToday = todayDurationMap.get(key) || 0;
         todayDurationMap.set(key, currentToday + d.duration_seconds);
       }
@@ -117,6 +115,12 @@ const fetchStats = async () => {
       visitorsData.allVisitors.forEach(visitor => {
         const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}|${visitor.device_type || 'desktop'}`;
         const deviceKey = `${visitor.ip_address}|${visitor.device_type || 'desktop'}`;
+        
+        // Проверка дали посещението е от днес (Ирландска часова зона)
+        const visitDate = new Date(visitor.last_visit);
+        const irishVisitDate = new Date(visitDate.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
+        const visitDateStr = `${irishVisitDate.getFullYear()}-${String(irishVisitDate.getMonth() + 1).padStart(2, '0')}-${String(irishVisitDate.getDate()).padStart(2, '0')}`;
+        const isToday = visitDateStr === todayIrishDate;
         
         const totalSeconds = totalDurationMap.get(deviceKey) || 0;
         const todaySeconds = todayDurationMap.get(deviceKey) || 0;
@@ -135,8 +139,10 @@ const fetchStats = async () => {
         }
         
         const loc = locationMap.get(key);
-        loc.todayVisits += (visitor.visit_count || 1);
-        loc.todaySeconds += todaySeconds;
+        if (isToday) {
+          loc.todayVisits += (visitor.visit_count || 1);
+          loc.todaySeconds += todaySeconds;
+        }
         loc.totalVisits += (visitor.visit_count || 1);
         loc.totalSeconds += totalSeconds;
         
