@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
-
 const isLocalIp = (ip) => {
   return !ip || ip === '::1' || ip === '127.0.0.1' || ip === 'localhost' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.');
 };
@@ -29,99 +28,135 @@ export default function Home() {
     console.log('🆔 Session ID (запазен):', sessionIdRef.current);
   }, []);
 
-const sendDuration = async (seconds, isFinal = false) => {
-  if (seconds < 15 && !isFinal) return;
-  
-  try {
-    const geoRes = await fetch('/api/proxy-geo');
-    const geoData = await geoRes.json();
+  const sendDuration = async (seconds, isFinal = false) => {
+    if (seconds < 15 && !isFinal) return;
     
-    const userAgent = navigator.userAgent;
-    let deviceType = 'desktop';
-    if (/mobile|android|iphone|phone/i.test(userAgent)) deviceType = 'mobile';
-    else if (/tablet|ipad/i.test(userAgent)) deviceType = 'tablet';
-    
-    await fetch('/api/visit-duration', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: sessionIdRef.current,
-        durationSeconds: seconds,
-        ip: geoData.query,
-        deviceType: deviceType
-      })
-    });
-    console.log(`💓 Heartbeat: ${Math.floor(seconds / 60)} минути, ${seconds % 60} секунди, устройство: ${deviceType}`);
-  } catch (err) {
-    console.error('Грешка при изпращане на време:', err);
-  }
-};
-
-useEffect(() => {
-  if (pathname === '/admin' || pathname === '/admin-login' || pathname.startsWith('/admin')) {
-    console.log('⏭️ Пропускане на броене (административна страница)');
-    return;
-  }
-  
-  const trackVisitor = async () => {
     try {
-      const lastVisit = localStorage.getItem('last_visit_time');
-      const now = Date.now();
-      const TEN_MINUTES = 10 * 60 * 1000;
-      
-      if (lastVisit && (now - parseInt(lastVisit)) < TEN_MINUTES) {
-        console.log('⏭️ Последното посещение е от по-малко от 10 минути, пропускам');
-        return;
-      }
-      
-      console.log('📡 Започва проследяване...');
-      
       const geoRes = await fetch('/api/proxy-geo');
       const geoData = await geoRes.json();
-      console.log('📍 Локация (ip-api.com):', geoData);
-      
-      // Проверка за локален IP адрес (да не се записва)
-      if (isLocalIp(geoData.query)) {
-        console.log('⏭️ Пропускане на локален IP адрес:', geoData.query);
-        return;
-      }
       
       const userAgent = navigator.userAgent;
       let deviceType = 'desktop';
       if (/mobile|android|iphone|phone/i.test(userAgent)) deviceType = 'mobile';
       else if (/tablet|ipad/i.test(userAgent)) deviceType = 'tablet';
       
-      const response = await fetch('/api/visitors', {
+      await fetch('/api/visit-duration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          sessionId: sessionIdRef.current,
+          durationSeconds: seconds,
           ip: geoData.query,
-          country: geoData.country,
-          city: geoData.city,
-          region: geoData.regionName,
-          userAgent: userAgent,
-          deviceType: deviceType,
-          sessionId: sessionIdRef.current
+          deviceType: deviceType
         })
       });
-      
-      const result = await response.json();
-      console.log('📊 Резултат от API:', result);
-      
-      if (result.success) {
-        localStorage.setItem('last_visit_time', now.toString());
-        setVisitCount(result.visitCount);
-        setIsNew(result.isNew);
-        setShowBanner(true);
-        setTimeout(() => setShowBanner(false), 5000);
-      }
+      console.log(`💓 Heartbeat: ${Math.floor(seconds / 60)} минути, ${seconds % 60} секунди, устройство: ${deviceType}`);
     } catch (err) {
-      console.error('❌ Грешка при проследяване:', err);
+      console.error('Грешка при изпращане на време:', err);
     }
   };
-  
-  trackVisitor();
-}, [pathname]);
+
+  // ⚠️ ТОВА БЕШЕ ПРОПУСНАТО – СТАРТИРАНЕ НА HEARTBEAT
+  useEffect(() => {
+    startTimeRef.current = Date.now();
+    
+    heartbeatIntervalRef.current = setInterval(() => {
+      if (startTimeRef.current) {
+        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        sendDuration(elapsed);
+      }
+    }, 15000);
+    
+    const handleBeforeUnload = () => {
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+      }
+      if (startTimeRef.current && !finalTimeSentRef.current) {
+        finalTimeSentRef.current = true;
+        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        sendDuration(elapsed, true);
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+      }
+      if (startTimeRef.current && !finalTimeSentRef.current) {
+        finalTimeSentRef.current = true;
+        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        sendDuration(elapsed, true);
+      }
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (pathname === '/admin' || pathname === '/admin-login' || pathname.startsWith('/admin')) {
+      console.log('⏭️ Пропускане на броене (административна страница)');
+      return;
+    }
+    
+    const trackVisitor = async () => {
+      try {
+        const lastVisit = localStorage.getItem('last_visit_time');
+        const now = Date.now();
+        const TEN_MINUTES = 10 * 60 * 1000;
+        
+        if (lastVisit && (now - parseInt(lastVisit)) < TEN_MINUTES) {
+          console.log('⏭️ Последното посещение е от по-малко от 10 минути, пропускам');
+          return;
+        }
+        
+        console.log('📡 Започва проследяване...');
+        
+        const geoRes = await fetch('/api/proxy-geo');
+        const geoData = await geoRes.json();
+        console.log('📍 Локация (ip-api.com):', geoData);
+        
+        if (isLocalIp(geoData.query)) {
+          console.log('⏭️ Пропускане на локален IP адрес:', geoData.query);
+          return;
+        }
+        
+        const userAgent = navigator.userAgent;
+        let deviceType = 'desktop';
+        if (/mobile|android|iphone|phone/i.test(userAgent)) deviceType = 'mobile';
+        else if (/tablet|ipad/i.test(userAgent)) deviceType = 'tablet';
+        
+        const response = await fetch('/api/visitors', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ip: geoData.query,
+            country: geoData.country,
+            city: geoData.city,
+            region: geoData.regionName,
+            userAgent: userAgent,
+            deviceType: deviceType,
+            sessionId: sessionIdRef.current
+          })
+        });
+        
+        const result = await response.json();
+        console.log('📊 Резултат от API:', result);
+        
+        if (result.success) {
+          localStorage.setItem('last_visit_time', now.toString());
+          setVisitCount(result.visitCount);
+          setIsNew(result.isNew);
+          setShowBanner(true);
+          setTimeout(() => setShowBanner(false), 5000);
+        }
+      } catch (err) {
+        console.error('❌ Грешка при проследяване:', err);
+      }
+    };
+    
+    trackVisitor();
+  }, [pathname]);
 
   return (
     <div style={{ height: '100vh', overflowY: 'scroll', scrollSnapType: 'y mandatory' }}>
@@ -232,31 +267,32 @@ useEffect(() => {
              </div>
            </Link>
         </div>
+        
         <Link href="/admin" style={{ textDecoration: 'none', position: 'fixed', bottom: '20px', right: '20px', zIndex: 100 }}>
-  <div style={{
-    background: 'rgba(255,255,255,0.15)',
-    backdropFilter: 'blur(8px)',
-    borderRadius: '12px',
-    padding: '0.75rem 1.5rem',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    border: '1px solid rgba(255,255,255,0.2)',
-    transition: 'all 0.3s ease'
-  }}
-  onMouseEnter={(e) => {
-    e.currentTarget.style.background = 'rgba(255,255,255,0.25)';
-    e.currentTarget.style.transform = 'scale(1.05)';
-  }}
-  onMouseLeave={(e) => {
-    e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
-    e.currentTarget.style.transform = 'scale(1)';
-  }}>
-    <span style={{ fontSize: '1.2rem' }}>⚙️</span>
-    <span style={{ color: 'white', fontSize: '0.9rem', fontWeight: '500' }}>Admin</span>
-  </div>
-</Link>
+          <div style={{
+            background: 'rgba(255,255,255,0.15)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: '12px',
+            padding: '0.75rem 1.5rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            border: '1px solid rgba(255,255,255,0.2)',
+            transition: 'all 0.3s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.25)';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}>
+            <span style={{ fontSize: '1.2rem' }}>⚙️</span>
+            <span style={{ color: 'white', fontSize: '0.9rem', fontWeight: '500' }}>Admin</span>
+          </div>
+        </Link>
 
         <p style={{ color: '#9ca3af', marginTop: '2rem', fontSize: '0.875rem' }}>
           ⚡ Всяка плочка води към съответната секция

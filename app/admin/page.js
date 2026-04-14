@@ -48,14 +48,14 @@ const getCurrentDateTime = () => {
   return `${day} ${month}, ${hours}:${minutes}`;
 };
 
-// Функция за получаване на днешната дата в Ирландска часова зона (YYYY-MM-DD)
+// Функция за получаване на днешната дата в Ирландска часова зона (DD-MM-YYYY)
 const getTodayIrishDate = () => {
   const now = new Date();
   const irishNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
   const year = irishNow.getFullYear();
   const month = String(irishNow.getMonth() + 1).padStart(2, '0');
   const day = String(irishNow.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return `${day}-${month}-${year}`;
 };
 
 export default function AdminPanel() {
