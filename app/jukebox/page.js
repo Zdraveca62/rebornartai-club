@@ -18,6 +18,7 @@ export default function Jukebox() {
   const timerRef = useRef(null);
   const playerRef = useRef(null);
   const [playerReady, setPlayerReady] = useState(false);
+  const currentDurationRef = useRef(240000); // 4 минути по подразбиране
 
   // Синхронизиране на queueRef с queue
   useEffect(() => {
@@ -41,7 +42,8 @@ export default function Jukebox() {
 
   const startTimer = () => {
     clearTimer();
-    const duration = 10000;
+    // Използваме реалната дължина на видеото или fallback 4 минути
+    const duration = currentDurationRef.current || 240000;
     console.log(`⏰ Стартирам таймер за ${duration / 1000} секунди`);
     
     timerRef.current = setTimeout(() => {
@@ -138,19 +140,29 @@ export default function Jukebox() {
       events: {
         onReady: (event) => {
           console.log('✅ Плейърът е готов');
+          // Вземаме реалната дължина на видеото
+          const duration = event.target.getDuration();
+          if (duration && duration > 0) {
+            currentDurationRef.current = duration * 1000; // конвертираме в милисекунди
+            console.log(`📏 Реална дължина на видеото: ${duration} секунди (${Math.floor(duration / 60)} мин ${Math.floor(duration % 60)} сек)`);
+          } else {
+            // Fallback на 4 минути, ако не може да се определи
+            currentDurationRef.current = 240000;
+            console.log(`⚠️ Не може да се определи дължината, използвам fallback: 4 минути`);
+          }
           if (isPlaying) {
             event.target.playVideo();
           }
         },
         onStateChange: (event) => {
           console.log('📺 Състояние на плейъра:', event.data);
-          if (event.data === 1) {
+          if (event.data === 1) { // Видеото върви
             setIsPlaying(true);
             startTimer();
-          } else if (event.data === 2) {
+          } else if (event.data === 2) { // Пауза
             setIsPlaying(false);
             clearTimer();
-          } else if (event.data === 0) {
+          } else if (event.data === 0) { // Видеото свърши
             console.log('🏁 Видеото свърши чрез API');
             clearTimer();
             playNext();
