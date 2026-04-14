@@ -56,7 +56,6 @@ export async function POST(request) {
     
     console.log('📱 Получени данни:', { ip, country, city, deviceType, sessionId });
     
-    // ТЪРСИМ ПО IP + device_type
     const { data: existing } = await supabase
       .from('visitors')
       .select('id, visit_count')
@@ -68,13 +67,13 @@ export async function POST(request) {
     
     if (existing) {
       const newCount = existing.visit_count + 1;
-      console.log(`📊 Обновяване: IP ${ip}, устройство ${deviceType}, посещение ${newCount}`);
+      console.log(`📊 Обновяване на IP ${ip}, устройство ${deviceType}: посещение ${newCount}`);
       
       await supabase
         .from('visitors')
         .update({ 
           visit_count: newCount, 
-          last_visit: now,
+          last_visit: now,  // ← КЛЮЧОВО: обновяваме last_visit
           country, 
           city, 
           region, 
@@ -90,9 +89,9 @@ export async function POST(request) {
         deviceType 
       });
     } else {
-      console.log(`📊 НОВ ЗАПИС: IP ${ip}, устройство ${deviceType}`);
+      console.log(`📊 Нов запис: IP ${ip}, устройство ${deviceType}`);
       
-      const { error } = await supabase.from('visitors').insert([{
+      await supabase.from('visitors').insert([{
         ip_address: ip,
         country,
         city,
@@ -104,11 +103,6 @@ export async function POST(request) {
         first_visit: now,
         last_visit: now,
       }]);
-      
-      if (error) {
-        console.error('❌ Грешка при INSERT:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
       
       return NextResponse.json({ 
         success: true, 

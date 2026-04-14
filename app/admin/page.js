@@ -1,16 +1,18 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-// Функция за форматиране на дата в DD/MM/YY
+// Функция за форматиране на дата в DD/MM/YY (за показване в таблицата)
 const formatDate = (dateString) => {
   if (!dateString) return 'Неизвестно';
   const date = new Date(dateString);
-  const day = date.getDate().toString().padStart(2, '0');
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const year = date.getFullYear().toString().slice(-2);
+  const irishDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
+  const day = irishDate.getDate().toString().padStart(2, '0');
+  const month = (irishDate.getMonth() + 1).toString().padStart(2, '0');
+  const year = irishDate.getFullYear().toString().slice(-2);
   return `${day}/${month}/${year}`;
 };
 
@@ -48,14 +50,14 @@ const getCurrentDateTime = () => {
   return `${day} ${month}, ${hours}:${minutes}`;
 };
 
-// Функция за получаване на днешната дата в Ирландска часова зона (DD-MM-YYYY)
+// Функция за получаване на днешната дата в Ирландска часова зона (YYYY-MM-DD за сравнение)
 const getTodayIrishDate = () => {
   const now = new Date();
   const irishNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
   const year = irishNow.getFullYear();
   const month = String(irishNow.getMonth() + 1).padStart(2, '0');
   const day = String(irishNow.getDate()).padStart(2, '0');
-  return `${day}-${month}-${year}`;
+  return `${year}-${month}-${day}`;
 };
 
 export default function AdminPanel() {
@@ -102,19 +104,21 @@ export default function AdminPanel() {
       const durationRes = await fetch('/api/visit-duration');
       const durations = await durationRes.json();
       
-      // Групираме времената по IP + device_type
       const totalDurationMap = new Map();
       const todayDurationMap = new Map();
-      const todayIrishDate = getTodayIrishDate();
+      const todayIrishDate = getTodayIrishDate(); // YYYY-MM-DD
       
       durations.forEach(d => {
         const key = `${d.ip_address}|${d.device_type || 'desktop'}`;
-        const durationDate = new Date(d.created_at).toISOString().split('T')[0];
+        const durationDate = new Date(d.created_at);
+        const irishDurationDate = new Date(durationDate.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
+        // Формат YYYY-MM-DD за сравнение
+        const durationDateStr = `${irishDurationDate.getFullYear()}-${String(irishDurationDate.getMonth() + 1).padStart(2, '0')}-${String(irishDurationDate.getDate()).padStart(2, '0')}`;
         
         const currentTotal = totalDurationMap.get(key) || 0;
         totalDurationMap.set(key, currentTotal + d.duration_seconds);
         
-        if (durationDate === todayIrishDate) {
+        if (durationDateStr === todayIrishDate) {
           const currentToday = todayDurationMap.get(key) || 0;
           todayDurationMap.set(key, currentToday + d.duration_seconds);
         }
@@ -127,9 +131,9 @@ export default function AdminPanel() {
           const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}|${visitor.device_type || 'desktop'}`;
           const deviceKey = `${visitor.ip_address}|${visitor.device_type || 'desktop'}`;
           
-          // Проверка дали посещението е от днес (Ирландска часова зона)
           const visitDate = new Date(visitor.last_visit);
           const irishVisitDate = new Date(visitDate.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
+          // Формат YYYY-MM-DD за сравнение
           const visitDateStr = `${irishVisitDate.getFullYear()}-${String(irishVisitDate.getMonth() + 1).padStart(2, '0')}-${String(irishVisitDate.getDate()).padStart(2, '0')}`;
           const isToday = visitDateStr === todayIrishDate;
           
@@ -151,12 +155,10 @@ export default function AdminPanel() {
           
           const loc = locationMap.get(key);
           
-          // САМО АКО Е ОТ ДНЕС, добавяме към todayVisits и todaySeconds
           if (isToday) {
             loc.todayVisits += (visitor.visit_count || 1);
             loc.todaySeconds += todaySeconds;
           }
-          // totalVisits и totalSeconds се добавят ВИНАГИ
           loc.totalVisits += (visitor.visit_count || 1);
           loc.totalSeconds += totalSeconds;
           
