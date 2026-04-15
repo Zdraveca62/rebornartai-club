@@ -5,13 +5,9 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
 const isLocalIp = (ip) => {
-  // Ако сме в development режим, записваме всичко за тестване
   if (process.env.NODE_ENV === 'development') {
-    console.log('🔧 Development mode: записвам локални посещения за тестване');
     return false;
   }
-  
-  // В production пропускаме локалните IP-та
   return !ip || ip === '::1' || ip === '127.0.0.1' || ip === 'localhost' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.');
 };
 
