@@ -13,7 +13,6 @@ export default function BlogPage() {
       try {
         setLoading(true);
         
-        // Добави timeout от 10 секунди
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
         
@@ -28,8 +27,6 @@ export default function BlogPage() {
         }
         
         const data = await res.json();
-        
-        // Ако data е масив, използвай него, иначе ако има posts поле
         const postsArray = Array.isArray(data) ? data : (data.posts || []);
         setPosts(postsArray);
         
@@ -69,6 +66,41 @@ export default function BlogPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a, #1e1b4b, #2e1065)' }}>
+      {/* Header с навигация */}
+      <div style={{
+        background: 'rgba(0,0,0,0.3)',
+        backdropFilter: 'blur(10px)',
+        padding: '1rem 2rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        borderBottom: '1px solid rgba(139, 92, 246, 0.3)'
+      }}>
+        <Link href="/" style={{ textDecoration: 'none' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '1.5rem' }}>🏠</span>
+            <span style={{ color: 'white', fontWeight: 'bold' }}>Reborn Art AI</span>
+          </div>
+        </Link>
+        
+        <Link href="/" style={{ 
+          background: 'rgba(139, 92, 246, 0.3)',
+          padding: '0.5rem 1rem',
+          borderRadius: '8px',
+          color: 'white',
+          textDecoration: 'none',
+          fontSize: '0.9rem',
+          transition: 'background 0.3s'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(139, 92, 246, 0.5)'}
+        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(139, 92, 246, 0.3)'}>
+          ← Назад към сайта
+        </Link>
+      </div>
+
       {/* Hero секция */}
       <div style={{
         background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(0,0,0,0.8))',
@@ -163,7 +195,6 @@ function ChatWidget() {
     }
     setSessionId(storedSessionId);
     
-    // Провери за запазено име
     const storedName = localStorage.getItem('visitor_name');
     if (storedName) {
       setVisitorName(storedName);
@@ -171,7 +202,6 @@ function ChatWidget() {
     }
   }, []);
 
-  // Зареждане на съобщенията
   const loadMessages = async () => {
     if (!sessionId) return;
     
@@ -187,7 +217,6 @@ function ChatWidget() {
     }
   };
 
-  // Автоматично зареждане на съобщения на всеки 3 секунди
   useEffect(() => {
     if (!sessionId || !isOpen) return;
     
