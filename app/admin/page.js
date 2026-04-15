@@ -122,19 +122,20 @@ const fetchStats = async () => {
     const durationRes = await fetch('/api/visit-duration');
     const durations = await durationRes.json();
     
-    // Вземи днешната дата в ISO формат (YYYY-MM-DD)
+    // Вземи днешната дата в прост формат YYYY-MM-DD
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0]; // "2026-04-15"
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     
-    console.log('📅 Днешна дата (ISO):', todayStr);
+    console.log('📅 Днешна дата:', todayStr);
     
     // Карти за времената
     const totalDurationMap = new Map();
     const todayDurationMap = new Map();
     
-    // Обработка на времената – директно по дата от created_at
+    // Обработка на времената
     durations.forEach(d => {
-      const durationDateStr = new Date(d.created_at).toISOString().split('T')[0];
+      // Вземи датата от created_at (просто първите 10 знака)
+      const durationDateStr = d.created_at.substring(0, 10);
       const key = `${d.ip_address}|${d.device_type || 'desktop'}`;
       
       const currentTotal = totalDurationMap.get(key) || 0;
@@ -143,7 +144,6 @@ const fetchStats = async () => {
       if (durationDateStr === todayStr) {
         const currentToday = todayDurationMap.get(key) || 0;
         todayDurationMap.set(key, currentToday + d.duration_seconds);
-        console.log(`✅ Време за днес: ${durationDateStr} = ${todayStr}, секунди: ${d.duration_seconds}`);
       }
     });
     
@@ -151,8 +151,8 @@ const fetchStats = async () => {
     
     if (visitorsData.allVisitors) {
       visitorsData.allVisitors.forEach(visitor => {
-        // Вземи датата на първото посещение (само дата, без час)
-        const visitDateStr = new Date(visitor.first_visit).toISOString().split('T')[0];
+        // Вземи датата на първото посещение (просто първите 10 знака)
+        const visitDateStr = visitor.first_visit.substring(0, 10);
         const isToday = (visitDateStr === todayStr);
         
         const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}|${visitor.device_type || 'desktop'}`;
@@ -163,8 +163,8 @@ const fetchStats = async () => {
         
         if (!locationMap.has(key)) {
           locationMap.set(key, {
-            country: visitor.country || 'Ireland',
-            city: visitor.city || 'Cashel',
+            country: visitor.country || 'Unknown',
+            city: visitor.city || 'Unknown',
             deviceType: visitor.device_type || 'desktop',
             todayVisits: 0,
             todaySeconds: 0,
@@ -179,7 +179,6 @@ const fetchStats = async () => {
         if (isToday) {
           loc.todayVisits += (visitor.visit_count || 1);
           loc.todaySeconds += todaySeconds;
-          console.log(`✅ Посещение за днес: ${visitDateStr} = ${todayStr}, ${visitor.city}, посещения: ${visitor.visit_count}`);
         }
         loc.totalVisits += (visitor.visit_count || 1);
         loc.totalSeconds += totalSeconds;
@@ -211,9 +210,6 @@ const fetchStats = async () => {
       currentPage: 1,
       itemsPerPage: 5
     });
-    
-    console.log('📊 Общо локации:', locationStats.length);
-    console.log('📊 Локации с днешни посещения:', locationStats.filter(l => l.todayVisits > 0).length);
     
   } catch (error) {
     console.error('Грешка при зареждане на статистика:', error);
