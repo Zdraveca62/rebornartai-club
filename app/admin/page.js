@@ -115,95 +115,107 @@ const [blogCurrentPage, setBlogCurrentPage] = useState(1);
 };
 
   const fetchStats = async () => {
-    try {
-      const visitorsRes = await fetch('/api/visitors');
-      const visitorsData = await visitorsRes.json();
+  try {
+    const visitorsRes = await fetch('/api/visitors');
+    const visitorsData = await visitorsRes.json();
+    
+    const durationRes = await fetch('/api/visit-duration');
+    const durations = await durationRes.json();
+    
+    // Карти за времената
+    const totalDurationMap = new Map();
+    const todayDurationMap = new Map();
+    const todayIrishDate = getTodayIrishDate(); // YYYY-MM-DD
+    
+    // Обработка на времената
+    durations.forEach(d => {
+      const key = `${d.ip_address}|${d.device_type || 'desktop'}`;
       
-      const durationRes = await fetch('/api/visit-duration');
-      const durations = await durationRes.json();
+      // Вземи датата от created_at и я конвертирай в ирландска часова зона
+      const durationDate = new Date(d.created_at);
+      const irishDurationDate = new Date(durationDate.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
+      const durationDateStr = `${irishDurationDate.getFullYear()}-${String(irishDurationDate.getMonth() + 1).padStart(2, '0')}-${String(irishDurationDate.getDate()).padStart(2, '0')}`;
       
-      const totalDurationMap = new Map();
-      const todayDurationMap = new Map();
-      const todayIrishDate = getTodayIrishDate(); // YYYY-MM-DD
+      const currentTotal = totalDurationMap.get(key) || 0;
+      totalDurationMap.set(key, currentTotal + d.duration_seconds);
       
-      durations.forEach(d => {
-        const key = `${d.ip_address}|${d.device_type || 'desktop'}`;
-        const durationDate = new Date(d.created_at);
-        const irishDurationDate = new Date(durationDate.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
-        // Формат YYYY-MM-DD за сравнение
-        const durationDateStr = `${irishDurationDate.getFullYear()}-${String(irishDurationDate.getMonth() + 1).padStart(2, '0')}-${String(irishDurationDate.getDate()).padStart(2, '0')}`;
-        
-        const currentTotal = totalDurationMap.get(key) || 0;
-        totalDurationMap.set(key, currentTotal + d.duration_seconds);
-        
-        if (durationDateStr === todayIrishDate) {
-          const currentToday = todayDurationMap.get(key) || 0;
-          todayDurationMap.set(key, currentToday + d.duration_seconds);
-        }
-      });
-      
-      const locationMap = new Map();
-      
-      if (visitorsData.allVisitors) {
-        visitorsData.allVisitors.forEach(visitor => {
-          const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}|${visitor.device_type || 'desktop'}`;
-          const deviceKey = `${visitor.ip_address}|${visitor.device_type || 'desktop'}`;
-          
-          const visitDate = new Date(visitor.first_visit);
-          const irishVisitDate = new Date(visitDate.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
-          const visitDateStr = `${irishVisitDate.getFullYear()}-${String(irishVisitDate.getMonth() + 1).padStart(2, '0')}-${String(irishVisitDate.getDate()).padStart(2, '0')}`;
-          const isToday = visitDateStr === todayIrishDate;
-          
-          const totalSeconds = totalDurationMap.get(deviceKey) || 0;
-          const todaySeconds = todayDurationMap.get(deviceKey) || 0;
-          
-          if (!locationMap.has(key)) {
-            locationMap.set(key, {
-              country: visitor.country || 'Unknown',
-              city: visitor.city || 'Unknown',
-              deviceType: visitor.device_type || 'desktop',
-              todayVisits: 0,
-              todaySeconds: 0,
-              totalVisits: 0,
-              totalSeconds: 0,
-              lastVisit: visitor.last_visit
-            });
-          }
-          
-          const loc = locationMap.get(key);
-          
-          if (isToday) {
-            loc.todayVisits += (visitor.visit_count || 1);
-            loc.todaySeconds += todaySeconds;
-          }
-          loc.totalVisits += (visitor.visit_count || 1);
-          loc.totalSeconds += totalSeconds;
-          
-          if (new Date(visitor.last_visit) > new Date(loc.lastVisit)) {
-            loc.lastVisit = visitor.last_visit;
-          }
-          
-          locationMap.set(key, loc);
-        });
+      // СРАВНЕНИЕ С ДНЕШНАТА ДАТА (като стринг)
+      if (durationDateStr === todayIrishDate) {
+        const currentToday = todayDurationMap.get(key) || 0;
+        todayDurationMap.set(key, currentToday + d.duration_seconds);
+        console.log(`✅ Добавено време за днес: ${durationDateStr} = ${todayIrishDate}, секунди: ${d.duration_seconds}`);
+      } else {
+        console.log(`⏭️ Пропуснато (не е днес): ${durationDateStr} != ${todayIrishDate}`);
       }
-      
-      let locationStats = Array.from(locationMap.values())
-        .sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
-      
-      const totalSeconds = locationStats.reduce((sum, loc) => sum + loc.totalSeconds, 0);
-      
-      setStats({ 
-        totalVisits: visitorsData.totalVisits || 0,
-        totalSeconds,
-        deviceStats: visitorsData.deviceStats || { desktop: 0, mobile: 0, tablet: 0 },
-        locationStats,
-        currentPage: 1,
-        itemsPerPage: 5
+    });
+    
+    const locationMap = new Map();
+    
+    if (visitorsData.allVisitors) {
+      visitorsData.allVisitors.forEach(visitor => {
+        const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}|${visitor.device_type || 'desktop'}`;
+        const deviceKey = `${visitor.ip_address}|${visitor.device_type || 'desktop'}`;
+        
+        // Вземи датата от first_visit и я конвертирай в ирландска часова зона
+        const visitDate = new Date(visitor.first_visit);
+        const irishVisitDate = new Date(visitDate.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
+        const visitDateStr = `${irishVisitDate.getFullYear()}-${String(irishVisitDate.getMonth() + 1).padStart(2, '0')}-${String(irishVisitDate.getDate()).padStart(2, '0')}`;
+        const isToday = (visitDateStr === todayIrishDate);
+        
+        const totalSeconds = totalDurationMap.get(deviceKey) || 0;
+        const todaySeconds = todayDurationMap.get(deviceKey) || 0;
+        
+        if (!locationMap.has(key)) {
+          locationMap.set(key, {
+            country: visitor.country || 'Unknown',
+            city: visitor.city || 'Unknown',
+            deviceType: visitor.device_type || 'desktop',
+            todayVisits: 0,
+            todaySeconds: 0,
+            totalVisits: 0,
+            totalSeconds: 0,
+            lastVisit: visitor.last_visit
+          });
+        }
+        
+        const loc = locationMap.get(key);
+        
+        if (isToday) {
+          loc.todayVisits += (visitor.visit_count || 1);
+          loc.todaySeconds += todaySeconds;
+        }
+        loc.totalVisits += (visitor.visit_count || 1);
+        loc.totalSeconds += totalSeconds;
+        
+        if (new Date(visitor.last_visit) > new Date(loc.lastVisit)) {
+          loc.lastVisit = visitor.last_visit;
+        }
+        
+        locationMap.set(key, loc);
       });
-    } catch (error) {
-      console.error('Грешка при зареждане на статистика:', error);
     }
-  };
+    
+    let locationStats = Array.from(locationMap.values())
+      .sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
+    
+    const totalSeconds = locationStats.reduce((sum, loc) => sum + loc.totalSeconds, 0);
+    
+    setStats({ 
+      totalVisits: visitorsData.totalVisits || 0,
+      totalSeconds,
+      deviceStats: visitorsData.deviceStats || { desktop: 0, mobile: 0, tablet: 0 },
+      locationStats,
+      currentPage: 1,
+      itemsPerPage: 5
+    });
+    
+    console.log('📍 Днешна дата (ирландска):', todayIrishDate);
+    console.log('📊 Локации с днешни посещения:', locationStats.filter(l => l.todayVisits > 0).length);
+    
+  } catch (error) {
+    console.error('Грешка при зареждане на статистика:', error);
+  }
+};
 
   useEffect(() => {
     const checkAuth = async () => {
