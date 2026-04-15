@@ -7,6 +7,10 @@ import Link from 'next/link';
 const isLocalIp = (ip) => {
   return !ip || ip === '::1' || ip === '127.0.0.1' || ip === 'localhost' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.');
 };
+  
+  // В production пропускаме локалните IP-та
+  return !ip || ip === '::1' || ip === '127.0.0.1' || ip === 'localhost' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.');
+};
 
 export default function Home() {
   const [visitCount, setVisitCount] = useState(null);
@@ -103,12 +107,12 @@ export default function Home() {
       try {
         const lastVisit = localStorage.getItem('last_visit_time');
         const now = Date.now();
-        const TEN_MINUTES = 10 * 60 * 1000;
-        
-        if (lastVisit && (now - parseInt(lastVisit)) < TEN_MINUTES) {
-          console.log('⏭️ Последното посещение е от по-малко от 10 минути, пропускам');
-          return;
-        }
+        const THIRTY_SECONDS = 30 * 1000; // Променено от 10 * 60 * 1000
+
+        if (isLocalIp(geoData.query)) {
+        console.log('⏭️ Пропускане на локален IP адрес:', geoData.query);
+      return;
+          }
         
         console.log('📡 Започва проследяване...');
         

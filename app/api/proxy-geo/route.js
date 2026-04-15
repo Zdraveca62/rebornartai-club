@@ -1,43 +1,77 @@
-export const dynamic = 'force-dynamic';
+// app/api/proxy-geo/route.js
+// Прокси за геолокация – работи и на localhost, и на Vercel
 
-export async function GET(request) {
-  try {
-    // Взимаме реалния IP на потребителя (проверяваме няколко хедъра)
-    let realIp = request.headers.get('x-forwarded-for');
-    if (realIp) {
-      realIp = realIp.split(',')[0].trim();
-    } else {
-      realIp = request.headers.get('x-real-ip');
-    }
+export async function GET() {
+  // Ако сме в development режим (локално тестване)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔧 Development mode: връщам тестова геолокация за localhost');
     
-    // Ако няма IP, използваме default
-    if (!realIp) {
-      realIp = '';
-    }
-    
-    console.log('📡 IP за геолокация:', realIp);
-    
-    // Изпращаме IP адреса към ip-api.com
-    const apiUrl = realIp ? `http://ip-api.com/json/${realIp}` : 'http://ip-api.com/json/';
-    const response = await fetch(apiUrl);
-    const data = await response.json();
-    
-    console.log('📍 Отговор от ip-api.com:', data);
-    
-    return new Response(JSON.stringify(data), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
+    return Response.json({
+      query: '192.168.1.100',        // Тестов IP
+      status: 'success',
+      country: 'Ireland',
+      countryCode: 'IE',
+      region: 'Munster',
+      regionName: 'County Tipperary',
+      city: 'Cashel',
+      zip: 'E25',
+      lat: 52.5167,
+      lon: -7.8833,
+      timezone: 'Europe/Dublin',
+      isp: 'Local Development',
+      org: 'Reborn Art AI',
+      as: 'ASN - Test'
     });
+  }
+  
+  // За production (Vercel) – реална заявка към ip-api.com
+  try {
+    // Използваме fetch към публичното API за геолокация
+    const res = await fetch('http://ip-api.com/json/', {
+      headers: {
+        'Accept': 'application/json',
+      },
+      // Важно: казваме на ip-api.com, че искаме JSON отговор
+      next: { revalidate: 0 } // Не кешираме за максимално точни данни
+    });
+    
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+    
+    const data = await res.json();
+    
+    // Ако ip-api.com върне fail (напр. за reserved range)
+    if (data.status === 'fail') {
+      console.log('⚠️ ip-api.com върна fail:', data.message);
+      // Връщаме fallback данни, за да не се чупи сайта
+      return Response.json({
+        query: 'unknown',
+        status: 'fail',
+        message: data.message,
+        // Fallback данни
+        country: 'Ireland',
+        city: 'Dublin',
+        regionName: 'County Dublin'
+      });
+    }
+    
+    // Успешен отговор
+    console.log('📍 Геолокация за production:', data.city, data.country);
+    return Response.json(data);
+    
   } catch (error) {
-    console.error('Грешка в прокси заявката:', error);
-    return new Response(JSON.stringify({ 
+    console.error('❌ Грешка при геолокация:', error);
+    
+    // Fallback при грешка – показваме данни по подразбиране
+    return Response.json({
+      query: 'error',
       status: 'fail',
-      country: 'Unknown',
-      city: 'Unknown',
-      query: '0.0.0.0'
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      message: error.message || 'Грешка при заявката',
+      // Fallback за да не се показва "Unknown"
+      country: 'Ireland',
+      city: 'Dublin',
+      regionName: 'County Dublin'
     });
   }
 }
