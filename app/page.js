@@ -27,10 +27,15 @@ export default function Home() {
 
   useEffect(() => {
     let savedSessionId = localStorage.getItem('session_id');
-    if (!savedSessionId) {
-      savedSessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('session_id', savedSessionId);
-    }
+if (!savedSessionId) {
+  // Генерирай уникален ID за този браузър
+  const browserId = Math.random().toString(36).substr(2, 9);
+  savedSessionId = 'session_' + Date.now() + '_' + browserId;
+  localStorage.setItem('session_id', savedSessionId);
+  console.log('🆕 Нов sessionId създаден за този браузър:', savedSessionId);
+} else {
+  console.log('🔄 Използвам съществуващ sessionId:', savedSessionId);
+}
     sessionIdRef.current = savedSessionId;
     console.log('🆔 Session ID (запазен):', sessionIdRef.current);
   }, []);
