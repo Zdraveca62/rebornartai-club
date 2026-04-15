@@ -159,7 +159,7 @@ const [blogCurrentPage, setBlogCurrentPage] = useState(1);
         // Вземи датата от first_visit и я конвертирай в ирландска часова зона
         const visitDate = new Date(visitor.first_visit);
         const irishVisitDate = new Date(visitDate.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
-        const visitDateStr = `${irishVisitDate.getFullYear()}-${String(irishVisitDate.getMonth() + 1).padStart(2, '0')}-${String(irishVisitDate.getDate()).padStart(2, '0')}`;
+        const visitDateStr = visitDate.toISOString().split('T')[0];
         const isToday = (visitDateStr === todayIrishDate);
         
         const totalSeconds = totalDurationMap.get(deviceKey) || 0;
