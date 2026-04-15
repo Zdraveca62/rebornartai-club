@@ -114,7 +114,7 @@ const [blogCurrentPage, setBlogCurrentPage] = useState(1);
   setBlogPosts(sortedPosts);
 };
 
-  const fetchStats = async () => {
+const fetchStats = async () => {
   try {
     const visitorsRes = await fetch('/api/visitors');
     const visitorsData = await visitorsRes.json();
@@ -122,30 +122,28 @@ const [blogCurrentPage, setBlogCurrentPage] = useState(1);
     const durationRes = await fetch('/api/visit-duration');
     const durations = await durationRes.json();
     
+    // Вземи днешната дата в ISO формат (YYYY-MM-DD)
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0]; // "2026-04-15"
+    
+    console.log('📅 Днешна дата (ISO):', todayStr);
+    
     // Карти за времената
     const totalDurationMap = new Map();
     const todayDurationMap = new Map();
-    const todayIrishDate = getTodayIrishDate(); // YYYY-MM-DD
     
-    // Обработка на времената
+    // Обработка на времената – директно по дата от created_at
     durations.forEach(d => {
+      const durationDateStr = new Date(d.created_at).toISOString().split('T')[0];
       const key = `${d.ip_address}|${d.device_type || 'desktop'}`;
-      
-      // Вземи датата от created_at и я конвертирай в ирландска часова зона
-      const durationDate = new Date(d.created_at);
-      const irishDurationDate = new Date(durationDate.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
-      const durationDateStr = `${irishDurationDate.getFullYear()}-${String(irishDurationDate.getMonth() + 1).padStart(2, '0')}-${String(irishDurationDate.getDate()).padStart(2, '0')}`;
       
       const currentTotal = totalDurationMap.get(key) || 0;
       totalDurationMap.set(key, currentTotal + d.duration_seconds);
       
-      // СРАВНЕНИЕ С ДНЕШНАТА ДАТА (като стринг)
-      if (durationDateStr === todayIrishDate) {
+      if (durationDateStr === todayStr) {
         const currentToday = todayDurationMap.get(key) || 0;
         todayDurationMap.set(key, currentToday + d.duration_seconds);
-        console.log(`✅ Добавено време за днес: ${durationDateStr} = ${todayIrishDate}, секунди: ${d.duration_seconds}`);
-      } else {
-        console.log(`⏭️ Пропуснато (не е днес): ${durationDateStr} != ${todayIrishDate}`);
+        console.log(`✅ Време за днес: ${durationDateStr} = ${todayStr}, секунди: ${d.duration_seconds}`);
       }
     });
     
@@ -153,22 +151,20 @@ const [blogCurrentPage, setBlogCurrentPage] = useState(1);
     
     if (visitorsData.allVisitors) {
       visitorsData.allVisitors.forEach(visitor => {
+        // Вземи датата на първото посещение (само дата, без час)
+        const visitDateStr = new Date(visitor.first_visit).toISOString().split('T')[0];
+        const isToday = (visitDateStr === todayStr);
+        
         const key = `${visitor.country || 'Unknown'}|${visitor.city || 'Unknown'}|${visitor.device_type || 'desktop'}`;
         const deviceKey = `${visitor.ip_address}|${visitor.device_type || 'desktop'}`;
-        
-        // Вземи датата от first_visit и я конвертирай в ирландска часова зона
-        const visitDate = new Date(visitor.first_visit);
-        const irishVisitDate = new Date(visitDate.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
-        const visitDateStr = visitDate.toISOString().split('T')[0];
-        const isToday = (visitDateStr === todayIrishDate);
         
         const totalSeconds = totalDurationMap.get(deviceKey) || 0;
         const todaySeconds = todayDurationMap.get(deviceKey) || 0;
         
         if (!locationMap.has(key)) {
           locationMap.set(key, {
-            country: visitor.country || 'Unknown',
-            city: visitor.city || 'Unknown',
+            country: visitor.country || 'Ireland',
+            city: visitor.city || 'Cashel',
             deviceType: visitor.device_type || 'desktop',
             todayVisits: 0,
             todaySeconds: 0,
@@ -183,6 +179,7 @@ const [blogCurrentPage, setBlogCurrentPage] = useState(1);
         if (isToday) {
           loc.todayVisits += (visitor.visit_count || 1);
           loc.todaySeconds += todaySeconds;
+          console.log(`✅ Посещение за днес: ${visitDateStr} = ${todayStr}, ${visitor.city}, посещения: ${visitor.visit_count}`);
         }
         loc.totalVisits += (visitor.visit_count || 1);
         loc.totalSeconds += totalSeconds;
@@ -196,7 +193,13 @@ const [blogCurrentPage, setBlogCurrentPage] = useState(1);
     }
     
     let locationStats = Array.from(locationMap.values())
-      .sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
+      .sort((a, b) => {
+        // Локациите с днешни посещения най-отгоре
+        if (b.todayVisits !== a.todayVisits) {
+          return b.todayVisits - a.todayVisits;
+        }
+        return new Date(b.lastVisit) - new Date(a.lastVisit);
+      });
     
     const totalSeconds = locationStats.reduce((sum, loc) => sum + loc.totalSeconds, 0);
     
@@ -209,7 +212,7 @@ const [blogCurrentPage, setBlogCurrentPage] = useState(1);
       itemsPerPage: 5
     });
     
-    console.log('📍 Днешна дата (ирландска):', todayIrishDate);
+    console.log('📊 Общо локации:', locationStats.length);
     console.log('📊 Локации с днешни посещения:', locationStats.filter(l => l.todayVisits > 0).length);
     
   } catch (error) {
