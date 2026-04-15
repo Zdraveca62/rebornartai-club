@@ -7,8 +7,11 @@ import Link from 'next/link';
 const isLocalIp = (ip) => {
   // Ако сме в development режим, записваме всичко за тестване
   if (process.env.NODE_ENV === 'development') {
+    console.log('🔧 Development mode: записвам локални посещения за тестване');
     return false;
   }
+  
+  // В production пропускаме локалните IP-та
   return !ip || ip === '::1' || ip === '127.0.0.1' || ip === 'localhost' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.');
 };
 
@@ -60,7 +63,6 @@ export default function Home() {
     }
   };
 
-  // ⚠️ ТОВА БЕШЕ ПРОПУСНАТО – СТАРТИРАНЕ НА HEARTBEAT
   useEffect(() => {
     startTimeRef.current = Date.now();
     
@@ -107,23 +109,18 @@ export default function Home() {
       try {
         const lastVisit = localStorage.getItem('last_visit_time');
         const now = Date.now();
-        const THIRTY_SECONDS = 30 * 1000; // Променено от 10 * 60 * 1000
-
-        if (isLocalIp(geoData.query)) {
-        console.log('⏭️ Пропускане на локален IP адрес:', geoData.query);
-      return;
-          }
+        const THIRTY_SECONDS = 30 * 1000;
+        
+        if (lastVisit && (now - parseInt(lastVisit)) < THIRTY_SECONDS) {
+          console.log('⏭️ Последното посещение е от по-малко от 30 секунди, пропускам');
+          return;
+        }
         
         console.log('📡 Започва проследяване...');
         
         const geoRes = await fetch('/api/proxy-geo');
         const geoData = await geoRes.json();
         console.log('📍 Локация (ip-api.com):', geoData);
-        
-        if (isLocalIp(geoData.query)) {
-          console.log('⏭️ Пропускане на локален IP адрес:', geoData.query);
-          return;
-        }
         
         const userAgent = navigator.userAgent;
         let deviceType = 'desktop';
