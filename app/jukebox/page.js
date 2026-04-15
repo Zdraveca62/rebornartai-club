@@ -18,6 +18,8 @@ export default function Jukebox() {
   const timerRef = useRef(null);
   const playerRef = useRef(null);
   const [playerReady, setPlayerReady] = useState(false);
+  const [topSite, setTopSite] = useState([]);
+  const [topYouTube, setTopYouTube] = useState([]);
   const currentDurationRef = useRef(240000); // 4 минути по подразбиране
 
   // Синхронизиране на queueRef с queue
@@ -226,12 +228,12 @@ export default function Jukebox() {
   };
 
   const addToQueue = (song) => {
-    console.log(`➕ Добавям в опашката: ${song.title}`);
+    console.log(`➕ Избрани песни: ${song.title}`);
     setQueue(prev => [...prev, song]);
   };
 
   const removeFromQueue = (index) => {
-    console.log(`❌ Премахвам от опашката индекс ${index}`);
+    console.log(`❌ Премахнати от избрани песни индекс ${index}`);
     setQueue(prev => {
       const newQueue = [...prev];
       newQueue.splice(index, 1);
@@ -242,6 +244,36 @@ export default function Jukebox() {
       setPlayerKey(p => p + 1);
     }
   };
+  
+  // Зареди топ 5 от сайта (от базата данни)
+useEffect(() => {
+  fetch('/api/jukebox-stats')
+    .then(res => res.json())
+    .then(data => {
+      if (data.success && data.stats) {
+        setTopSite(data.stats.slice(0, 5));
+      }
+    })
+    .catch(err => console.error('Грешка при зареждане на топ 5 от сайта:', err));
+}, []);
+
+// Зареди топ 5 от YouTube (реален API)
+useEffect(() => {
+  fetch('/api/youtube-top')
+    .then(res => res.json())
+    .then(data => {
+      if (data.success && data.videos) {
+        setTopYouTube(data.videos);
+      } else {
+        console.error('Грешка при зареждане на YouTube топ 5:', data.error);
+        setTopYouTube([]);
+      }
+    })
+    .catch(err => {
+      console.error('Грешка при заявка към YouTube API:', err);
+      setTopYouTube([]);
+    });
+}, []);
 
   const moveUp = (index) => {
     console.log(`⬆️ Местя нагоре индекс ${index}`);
@@ -293,6 +325,177 @@ export default function Jukebox() {
 
       <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '1rem' }}>🎵 Джубокс</h1>
       <p style={{ textAlign: 'center', marginBottom: '2rem', color: '#9ca3af' }}>Кликни върху песен, за да я добавиш в списъка за изпълнение</p>
+      
+      {/* НЕОНОВИ БЛОКОВЕ – ТОП 5 КЛАСАЦИИ */}
+      <div style={{ maxWidth: '1200px', margin: '0 auto 3rem auto', padding: '0 1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+          
+          {/* Блок 1: Топ 5 в YouTube */}
+          <div style={{
+            background: 'rgba(0, 0, 0, 0.7)',
+            borderRadius: '24px',
+            padding: '1.5rem',
+            border: '2px solid #ff0040',
+            boxShadow: '0 0 20px #ff0040, inset 0 0 10px rgba(255, 0, 64, 0.2)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: '-100%',
+              width: '100%',
+              height: '2px',
+              background: 'linear-gradient(90deg, transparent, #ff0040, transparent)',
+              animation: 'slideRed 2s linear infinite'
+            }} />
+            <div style={{
+              position: 'absolute',
+              bottom: 0,
+              right: '-100%',
+              width: '100%',
+              height: '2px',
+              background: 'linear-gradient(270deg, transparent, #ff0040, transparent)',
+              animation: 'slideRed 2s linear infinite reverse'
+            }} />
+            
+            <h2 style={{ 
+              color: '#ff0040', 
+              textAlign: 'center', 
+              marginBottom: '0.5rem',
+              fontSize: '1.5rem',
+              textShadow: '0 0 10px #ff0040'
+            }}>
+              🔥 ТОП 5 В YOUTUBE
+            </h2>
+            <p style={{ color: '#ff6699', textAlign: 'center', marginBottom: '1.5rem', fontSize: '0.8rem' }}>
+              Най-гледани от канала
+            </p>
+            
+            {topYouTube.length === 0 ? (
+              <p style={{ color: '#888', textAlign: 'center' }}>Зареждане на YouTube статистика...</p>
+            ) : (
+              topYouTube.map((video, idx) => (
+                <a key={video.id} href={video.videoUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '0.7rem',
+                    marginBottom: '0.5rem',
+                    background: 'rgba(255, 0, 64, 0.1)',
+                    borderRadius: '12px',
+                    borderLeft: `3px solid #ff0040`,
+                    transition: 'transform 0.2s',
+                    cursor: 'pointer'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                      <span style={{ color: '#ff0040', fontWeight: 'bold' }}>#{idx + 1}</span>
+                      <img 
+                        src={video.thumbnail} 
+                        alt={video.title}
+                        style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px' }}
+                      />
+                      <div>
+                        <div style={{ color: 'white', fontSize: '0.85rem', fontWeight: 'bold', maxWidth: '180px' }}>
+                          {video.title.length > 30 ? video.title.substring(0, 30) + '...' : video.title}
+                        </div>
+                        <div style={{ color: '#888', fontSize: '0.7rem' }}>▶ {video.views} гледания</div>
+                      </div>
+                    </div>
+                    <div style={{ color: '#ff6699', fontSize: '0.8rem' }}>🎬</div>
+                  </div>
+                </a>
+              ))
+            )}
+          </div>
+          
+          {/* Блок 2: Топ 5 в сайта */}
+          <div style={{
+            background: 'rgba(0, 0, 0, 0.7)',
+            borderRadius: '24px',
+            padding: '1.5rem',
+            border: '2px solid #00ffff',
+            boxShadow: '0 0 20px #00ffff, inset 0 0 10px rgba(0, 255, 255, 0.2)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              right: '-100%',
+              width: '100%',
+              height: '2px',
+              background: 'linear-gradient(270deg, transparent, #00ffff, transparent)',
+              animation: 'slideCyan 2s linear infinite'
+            }} />
+            <div style={{
+              position: 'absolute',
+              bottom: 0,
+              left: '-100%',
+              width: '100%',
+              height: '2px',
+              background: 'linear-gradient(90deg, transparent, #00ffff, transparent)',
+              animation: 'slideCyan 2s linear infinite reverse'
+            }} />
+            
+            <h2 style={{ 
+              color: '#00ffff', 
+              textAlign: 'center', 
+              marginBottom: '0.5rem',
+              fontSize: '1.5rem',
+              textShadow: '0 0 10px #00ffff'
+            }}>
+              🎧 ТОП 5 В САЙТА
+            </h2>
+            <p style={{ color: '#66ffff', textAlign: 'center', marginBottom: '1.5rem', fontSize: '0.8rem' }}>
+              {new Date().toLocaleDateString('bg-BG', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+            
+            {topSite.length === 0 ? (
+              <p style={{ color: '#888', textAlign: 'center' }}>Все още няма слушания</p>
+            ) : (
+              topSite.map((item, idx) => {
+                const fullSong = allSongs.find(song => song.id === item.song_id);
+                return (
+                  <div key={item.song_id} style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '0.7rem',
+                    marginBottom: '0.5rem',
+                    background: 'rgba(0, 255, 255, 0.1)',
+                    borderRadius: '12px',
+                    borderLeft: `3px solid #00ffff`,
+                    transition: 'transform 0.2s',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => fullSong && addToQueue(fullSong)}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                      <span style={{ color: '#00ffff', fontWeight: 'bold' }}>#{idx + 1}</span>
+                      <img 
+                        src={fullSong?.cover_url || 'https://via.placeholder.com/40'} 
+                        alt={item.song_title}
+                        style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px' }}
+                        onError={(e) => e.target.src = 'https://via.placeholder.com/40'}
+                      />
+                      <div>
+                        <div style={{ color: 'white', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                          {item.song_title.length > 20 ? item.song_title.substring(0, 20) + '...' : item.song_title}
+                        </div>
+                        <div style={{ color: '#888', fontSize: '0.7rem' }}>
+                          {item.song_language === 'bg' ? '🇧🇬 Българска' : '🇬🇧 English'}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ color: '#66ffff', fontSize: '0.8rem' }}>🎵 {item.listen_count}</div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* КАРУСЕЛ С ПЕСНИ */}
       <div style={{ position: 'relative', marginBottom: '2rem' }}>
@@ -404,7 +607,7 @@ export default function Jukebox() {
       </div>
 
       {/* ОПАШКА ЗА ИЗПЪЛНЕНИЕ */}
-      <h2 style={{ textAlign: 'center', marginBottom: '1rem', fontSize: '1.5rem' }}>📋 Опашка за изпълнение</h2>
+      <h2 style={{ textAlign: 'center', marginBottom: '1rem', fontSize: '1.5rem' }}>📋 Лист Избрани песни</h2>
       <div style={{
         display: 'flex',
         overflowX: 'auto',
@@ -417,7 +620,7 @@ export default function Jukebox() {
         alignItems: 'center'
       }}>
         {queue.length === 0 && (
-          <p style={{ color: '#9ca3af', textAlign: 'center', width: '100%' }}>Няма добавени песни. Кликни върху песен от библиотеката, за да я добавиш.</p>
+          <p style={{ color: '#9ca3af', textAlign: 'center', width: '100%' }}>Няма добавени песни. Кликни върху песен от Джубокса, за да я добавиш.</p>
         )}
         {queue.map((song, idx) => (
           <div key={idx} style={{ 
@@ -495,8 +698,21 @@ export default function Jukebox() {
           <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.8rem', color: '#9ca3af' }}>
             {shuffle ? '✅ Режим "Разбъркай" е активен' : '❌ Режим "Разбъркай" е изключен'}
           </p>
+          <style jsx>{`
+        @keyframes slideRed {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(200%); }
+        }
+        @keyframes slideCyan {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(200%); }
+        }
+      `}</style>
         </div>
+        
       )}
     </div>
+
+    
   );
 }
