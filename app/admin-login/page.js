@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Suspense } from 'react'; // Добавете този импорт
+import { Suspense } from 'react';
 
-// Това казва на Next.js да не прави prerender за тази страница и да я рендира динамично
+// Това принуждава страницата да се рендира динамично и спира грешката при build
 export const dynamic = 'force-dynamic';
 
-// Изолирайте логиката, която използва useSearchParams, в отделен компонент
+// Изолираме логиката с useSearchParams в отделен компонент
 function LoginForm() {
   const [token, setToken] = useState('');
   const [error, setError] = useState('');
@@ -18,7 +18,6 @@ function LoginForm() {
   
   const ADMIN_TOKEN = 'reborn_admin_9f7d3e8a2c1b5f6e9d4a7c8b3e2f1a9d';
 
-  // Проверка за вече влязъл потребител
   useEffect(() => {
     const checkExistingToken = async () => {
       const hasCookie = document.cookie.includes('admin_token=');
