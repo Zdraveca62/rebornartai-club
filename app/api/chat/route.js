@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
 // GET – взима съобщенията за дадена сесия
+// GET – взима съобщенията за дадена сесия
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -12,7 +13,7 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Missing sessionId' }, { status: 400 });
     }
     
-    // Вземи съобщенията
+    // 1. Вземи съобщенията
     const { data: messages, error: messagesError } = await supabase
       .from('chat_messages')
       .select('*')
@@ -21,16 +22,23 @@ export async function GET(request) {
     
     if (messagesError) throw messagesError;
     
-    // Ако е admin, маркирай съобщенията като прочетени
+    // 2. АКО Е АДМИН – МАРКИРАЙ КАТО ПРОЧЕТЕНИ (това добавяме)
     if (admin && messages && messages.length > 0) {
-      await supabase
+      const { error: updateError } = await supabase
         .from('chat_messages')
         .update({ is_read: true })
         .eq('session_id', sessionId)
         .eq('sender', 'visitor')
         .eq('is_read', false);
+      
+      if (updateError) {
+        console.error('Грешка при маркиране:', updateError);
+      } else {
+        console.log(`✅ Маркирани като прочетени за сесия ${sessionId}`);
+      }
     }
     
+    // 3. ВРЪЩА СЪОБЩЕНИЯТА (това остава)
     return NextResponse.json({ messages: messages || [] });
     
   } catch (error) {
