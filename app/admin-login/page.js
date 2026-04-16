@@ -1,52 +1,113 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 export default function AdminLogin() {
   const [token, setToken] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  const ADMIN_TOKEN = 'reborn_admin_9f7d3e8a2c1b5f6e9d4a7c8b3e2f1a9d';
+
+  // Проверка дали вече е влязъл
+  useEffect(() => {
+    const checkExistingToken = async () => {
+      // Проверка за cookie
+      const hasCookie = document.cookie.includes('admin_token=');
+      if (hasCookie) {
+        router.push('/admin');
+        return;
+      }
+      
+      // Проверка за sessionStorage (старият метод)
+      const savedToken = sessionStorage.getItem('admin_token');
+      if (savedToken) {
+        const res = await fetch('/api/admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: savedToken })
+        });
+        const data = await res.json();
+        if (data.valid) {
+          // Възстановяване на cookie
+          document.cookie = `admin_token=${savedToken}; path=/; max-age=28800; SameSite=Lax`;
+          router.push('/admin');
+        }
+      }
+    };
+    
+    checkExistingToken();
+  }, [router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
     setError('');
+    setLoading(true);
+    
+    if (!token.trim()) {
+      setError('Моля, въведете администраторски токен');
+      setLoading(false);
+      return;
+    }
     
     try {
       const res = await fetch('/api/admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token })
+        body: JSON.stringify({ token: token.trim() })
       });
       
       const data = await res.json();
       
       if (data.valid) {
-        sessionStorage.setItem('admin_token', token);
-        router.push('/admin');
+        // Запазване в sessionStorage (за стари методи)
+        sessionStorage.setItem('admin_token', token.trim());
+        
+        // Запазване в cookie (за middleware защита)
+        document.cookie = `admin_token=${token.trim()}; path=/; max-age=28800; SameSite=Lax`;
+        
+        // Пренасочване към страницата, от която е дошъл, или към admin
+        const from = searchParams.get('from');
+        router.push(from || '/admin');
       } else {
-        setError(data.error || 'Невалиден администраторски токен!');
-        // След 2 секунди пренасочваме към началната страница
-        setTimeout(() => {
-          router.push('/');
-        }, 2000);
+        setError('Невалиден администраторски токен');
+        setToken('');
       }
     } catch (err) {
+      console.error('Грешка при вход:', err);
       setError('Грешка при свързване със сървъра');
-      setTimeout(() => {
-        router.push('/');
-      }, 2000);
+    } finally {
+      setLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e1b4b, #000000, #4c1d95)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '2rem', width: '350px' }}>
-        <h2 style={{ color: 'white', textAlign: 'center', marginBottom: '1rem' }}>🔐 Администраторски вход</h2>
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #1e1b4b, #000000, #4c1d95)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '1rem'
+    }}>
+      <div style={{
+        background: 'rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '24px',
+        padding: '2rem',
+        width: '100%',
+        maxWidth: '400px',
+        border: '1px solid rgba(139, 92, 246, 0.3)'
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🔐</div>
+          <h1 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '0.5rem' }}>Администраторски вход</h1>
+          <p style={{ color: '#9ca3af', fontSize: '0.8rem' }}>Въведете валиден токен за достъп</p>
+        </div>
         
         <form onSubmit={handleSubmit}>
           <input
@@ -54,39 +115,60 @@ export default function AdminLogin() {
             placeholder="Въведете администраторски токен"
             value={token}
             onChange={(e) => setToken(e.target.value)}
-            required
-            autoFocus
-            style={{ width: '100%', padding: '0.75rem', marginBottom: '1rem', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white' }}
+            autoComplete="off"
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              marginBottom: '1rem',
+              borderRadius: '8px',
+              border: 'none',
+              background: 'rgba(255,255,255,0.2)',
+              color: 'white',
+              fontSize: '1rem',
+              outline: 'none'
+            }}
           />
+          
+          {error && (
+            <div style={{
+              background: 'rgba(239, 68, 68, 0.2)',
+              border: '1px solid #ef4444',
+              borderRadius: '8px',
+              padding: '0.5rem',
+              marginBottom: '1rem',
+              color: '#fca5a5',
+              fontSize: '0.8rem',
+              textAlign: 'center'
+            }}>
+              ❌ {error}
+            </div>
+          )}
           
           <button
             type="submit"
-            disabled={isLoading}
-            style={{ width: '100%', background: '#8b5cf6', border: 'none', color: 'white', padding: '0.75rem', borderRadius: '8px', cursor: 'pointer', opacity: isLoading ? 0.7 : 1 }}
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              background: loading ? '#6b7280' : '#8b5cf6',
+              border: 'none',
+              borderRadius: '8px',
+              color: 'white',
+              fontSize: '1rem',
+              fontWeight: 'bold',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'background 0.3s'
+            }}
           >
-            {isLoading ? 'Проверка...' : 'Вход'}
+            {loading ? 'Проверка...' : 'Вход'}
           </button>
-          
-          {error && (
-            <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-              <p style={{ color: '#ef4444', marginBottom: '0.5rem' }}>{error}</p>
-              <p style={{ color: '#9ca3af', fontSize: '0.75rem' }}>Пренасочване към началната страница...</p>
-            </div>
-          )}
         </form>
         
-        <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-          <button
-            onClick={() => router.push('/')}
-            style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '0.875rem', cursor: 'pointer', textDecoration: 'underline' }}
-          >
-            ← Към началната страница
-          </button>
+        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+          <Link href="/" style={{ color: '#8b5cf6', textDecoration: 'none', fontSize: '0.8rem' }}>
+            ← Назад към сайта
+          </Link>
         </div>
-        
-        <p style={{ color: '#9ca3af', fontSize: '0.75rem', textAlign: 'center', marginTop: '1rem' }}>
-          Токенът се изтрива при затваряне на браузъра
-        </p>
       </div>
     </div>
   );

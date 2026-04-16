@@ -46,17 +46,19 @@ export async function GET(request) {
   }
 }
 
-// DELETE – изтрива цяла чат сесия (само за админ)
+// DELETE – изтрива цяла чат сесия (потребител)
 export async function DELETE(request) {
   try {
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
     
+    console.log('🗑️ DELETE /api/chat/admin за sessionId:', sessionId);
+    
     if (!sessionId) {
       return NextResponse.json({ error: 'Missing sessionId' }, { status: 400 });
     }
     
-    // Изтрива всички съобщения, свързани със сесията
+    // Изтрива съобщенията
     const { error: messagesError } = await supabase
       .from('chat_messages')
       .delete()
@@ -64,7 +66,7 @@ export async function DELETE(request) {
     
     if (messagesError) throw messagesError;
     
-    // Изтрива самата сесия
+    // Изтрива сесията
     const { error: sessionError } = await supabase
       .from('chat_sessions')
       .delete()
@@ -72,10 +74,10 @@ export async function DELETE(request) {
     
     if (sessionError) throw sessionError;
     
-    return NextResponse.json({ success: true, message: 'Чат сесията е изтрита' });
+    return NextResponse.json({ success: true });
     
   } catch (error) {
-    console.error('Грешка при DELETE session:', error);
+    console.error('❌ Грешка:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -1,0 +1,35 @@
+import { supabase } from '@/lib/supabase';
+import { NextResponse } from 'next/server';
+
+export async function DELETE(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const sessionId = searchParams.get('sessionId');
+    
+    console.log('🗑️ DELETE /api/chat/messages за sessionId:', sessionId);
+    
+    if (!sessionId) {
+      return NextResponse.json({ error: 'Missing sessionId' }, { status: 400 });
+    }
+    
+    // Изтрива само съобщенията, не и сесията
+    const { error } = await supabase
+      .from('chat_messages')
+      .delete()
+      .eq('session_id', sessionId);
+    
+    if (error) throw error;
+    
+    // Обнови last_message_at в сесията
+    await supabase
+      .from('chat_sessions')
+      .update({ last_message_at: new Date().toISOString() })
+      .eq('session_id', sessionId);
+    
+    return NextResponse.json({ success: true });
+    
+  } catch (error) {
+    console.error('❌ Грешка при DELETE messages:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

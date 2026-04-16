@@ -10,7 +10,6 @@ export default function AdminChat() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Зареждане на сесиите
   const loadSessions = async () => {
     try {
       const res = await fetch('/api/chat/admin');
@@ -23,18 +22,17 @@ export default function AdminChat() {
     }
   };
 
-  // Зареждане на съобщения за избрана сесия
   const loadMessages = async (sessionId) => {
     try {
       const res = await fetch(`/api/chat?sessionId=${sessionId}&admin=true`);
       const data = await res.json();
       setMessages(data.messages || []);
+      await loadSessions();
     } catch (err) {
       console.error('Грешка при зареждане на съобщения:', err);
     }
   };
 
-  // Изпращане на съобщение
   const sendMessage = async () => {
     if (!input.trim() || !selectedSession) return;
     
@@ -59,10 +57,8 @@ export default function AdminChat() {
     }
   };
 
-  // Изтриване на конкретно съобщение
   const deleteMessage = async (messageId) => {
-    if (!confirm('Сигурни ли сте, че искате да изтриете това съобщение?')) return;
-    
+    if (!confirm('Сигурни ли сте?')) return;
     try {
       const res = await fetch(`/api/chat?id=${messageId}`, { method: 'DELETE' });
       if (res.ok) {
@@ -70,86 +66,112 @@ export default function AdminChat() {
         await loadSessions();
       }
     } catch (err) {
-      console.error('Грешка при изтриване:', err);
+      console.error(err);
     }
   };
 
-  // Изтриване на цяла чат сесия (избрания потребител)
-  const deleteSelectedSession = async () => {
-    if (!selectedSession) return;
-    if (!confirm(`Сигурни ли сте, че искате да изтриете ЦЕЛИЯ чат с ${selectedSession.visitor_name || 'Анонимен'}? Това действие е необратимо!`)) return;
+const deleteSelectedSession = async () => {
+  console.log('1. deleteSelectedSession извикана');
+  if (!selectedSession) {
+    console.log('2. Няма selectedSession');
+    return;
+  }
+  console.log('3. Session ID:', selectedSession.session_id);
+  
+  if (!confirm(`Изтриване на чата с ${selectedSession.visitor_name || 'Анонимен'}?`)) {
+    console.log('4. Потребителят отказа');
+    return;
+  }
+  
+  try {
+    console.log('5. Изпращам DELETE заявка към /api/chat/messages');
+    const res = await fetch(`/api/chat/messages?sessionId=${selectedSession.session_id}`, {
+      method: 'DELETE'
+    });
+    console.log('6. Отговор:', res.status);
     
-    try {
-      const res = await fetch(`/api/chat/admin?sessionId=${selectedSession.session_id}`, { method: 'DELETE' });
-      if (res.ok) {
-        await loadSessions();
-        setSelectedSession(null);
-        setMessages([]);
-      }
-    } catch (err) {
-      console.error('Грешка при изтриване на сесия:', err);
+    if (res.ok) {
+      setMessages([]);
+      await loadSessions();
+      alert('Чатът е изтрит');
+    } else {
+      const text = await res.text();
+      console.log('7. Грешка:', text);
+      alert(`Грешка: ${res.status}`);
     }
-  };
+  } catch (err) {
+    console.error('8. Грешка:', err);
+    alert('Възникна грешка');
+  }
+};
 
-  // Блокиране на потребител
-  const blockUser = async () => {
-    if (!selectedSession) return;
-    if (!confirm(`Сигурни ли сте, че искате да БЛОКИРАТЕ ${selectedSession.visitor_name || 'Анонимен'}? Той няма да може да ви пише повече.`)) return;
+const blockUser = async () => {
+  console.log('🔍 blockUser извикана');
+  if (!selectedSession) {
+    alert('Няма избран потребител');
+    return;
+  }
+  
+  if (!confirm(`Блокиране на ${selectedSession.visitor_name || 'Анонимен'}?`)) return;
+  
+  try {
+    const res = await fetch('/api/chat/admin/block', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: selectedSession.session_id })
+    });
+    console.log('📡 Отговор blockUser:', res.status);
     
-    try {
-      const res = await fetch('/api/chat/admin/block', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: selectedSession.session_id })
-      });
-      if (res.ok) {
-        await loadSessions();
-        alert(`Потребителят ${selectedSession.visitor_name || 'Анонимен'} е блокиран.`);
-      }
-    } catch (err) {
-      console.error('Грешка при блокиране:', err);
+    if (res.ok) {
+      await loadSessions();
+      alert('Потребителят е блокиран');
+    } else {
+      alert(`Грешка: ${res.status}`);
     }
-  };
+  } catch (err) {
+    console.error('❌ Грешка:', err);
+    alert('Възникна грешка');
+  }
+};
 
-  // Изтриване на потребител (пълно премахване)
-  const deleteUser = async () => {
-    if (!selectedSession) return;
-    if (!confirm(`Сигурни ли сте, че искате да ИЗТРИЕТЕ ПОТРЕБИТЕЛЯ ${selectedSession.visitor_name || 'Анонимен'}? Това действие е необратимо и целият чат ще бъде премахнат от списъка.`)) return;
+const deleteUser = async () => {
+  console.log('🔍 deleteUser извикана');
+  if (!selectedSession) {
+    alert('Няма избран потребител');
+    return;
+  }
+  
+  if (!confirm(`Изтриване на ${selectedSession.visitor_name || 'Анонимен'}?`)) return;
+  
+  try {
+    const res = await fetch(`/api/chat/admin?sessionId=${selectedSession.session_id}`, {
+      method: 'DELETE'
+    });
+    console.log('📡 Отговор deleteUser:', res.status);
     
-    try {
-      const res = await fetch(`/api/chat/admin?sessionId=${selectedSession.session_id}`, { method: 'DELETE' });
-      if (res.ok) {
-        await loadSessions();
-        setSelectedSession(null);
-        setMessages([]);
-        alert(`Потребителят ${selectedSession.visitor_name || 'Анонимен'} е изтрит.`);
-      }
-    } catch (err) {
-      console.error('Грешка при изтриване на потребител:', err);
+    if (res.ok) {
+      await loadSessions();
+      setSelectedSession(null);
+      setMessages([]);
+      alert('Потребителят е изтрит');
+    } else {
+      alert(`Грешка: ${res.status}`);
     }
-  };
+  } catch (err) {
+    console.error('❌ Грешка:', err);
+    alert('Възникна грешка');
+  }
+};
 
-  // Запис на чата във файл
   const saveChatToFile = () => {
-    if (!selectedSession || messages.length === 0) {
-      alert('Няма съобщения за запис');
-      return;
-    }
-    
+    if (!selectedSession || messages.length === 0) return;
     const now = new Date();
-    const fileName = `${selectedSession.visitor_name || 'anonymous'}_${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}_${now.getHours()}-${now.getMinutes()}.txt`;
-    
+    const fileName = `${selectedSession.visitor_name || 'anonymous'}_${now.toISOString().slice(0,19)}.txt`;
     let content = `=== Чат с ${selectedSession.visitor_name || 'Анонимен'} ===\n`;
-    content += `Дата на запис: ${now.toLocaleString('bg-BG')}\n`;
-    content += `Session ID: ${selectedSession.session_id}\n`;
-    content += `${'='.repeat(50)}\n\n`;
-    
     messages.forEach(msg => {
       const sender = msg.sender === 'admin' ? 'Администратор' : (selectedSession.visitor_name || 'Посетител');
-      const time = new Date(msg.created_at).toLocaleString('bg-BG');
-      content += `[${time}] ${sender}: ${msg.message}\n`;
+      content += `[${new Date(msg.created_at).toLocaleString()}] ${sender}: ${msg.message}\n`;
     });
-    
     const blob = new Blob([content], { type: 'text/plain' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -191,16 +213,13 @@ export default function AdminChat() {
         </div>
         
         <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '1rem', height: 'calc(100vh - 120px)' }}>
-          {/* Списък със сесии */}
           <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '16px', overflowY: 'auto' }}>
             <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
               <h3 style={{ color: 'white' }}>Активни чатове</h3>
               <p style={{ color: '#64748b', fontSize: '12px' }}>{sessions.length} активни разговора</p>
             </div>
             {sessions.length === 0 ? (
-              <div style={{ padding: '1rem', color: '#64748b', textAlign: 'center' }}>
-                Няма активни чатове
-              </div>
+              <div style={{ padding: '1rem', color: '#64748b', textAlign: 'center' }}>Няма активни чатове</div>
             ) : (
               sessions.map(ses => (
                 <div
@@ -215,26 +234,20 @@ export default function AdminChat() {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ color: 'white', fontWeight: 'bold' }}>{ses.visitor_name || 'Анонимен'}</span>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      {ses.unreadCount > 0 && (
-                        <span style={{ background: '#ef4444', borderRadius: '50%', padding: '2px 6px', fontSize: '10px', color: 'white' }}>
-                          {ses.unreadCount}
-                        </span>
-                      )}
-                    </div>
+                    {ses.unreadCount > 0 && (
+                      <span style={{ background: '#ef4444', borderRadius: '50%', padding: '2px 6px', fontSize: '10px', color: 'white' }}>
+                        {ses.unreadCount}
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
                     {ses.lastMessage?.message?.substring(0, 40) || 'Няма съобщения'}...
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#475569', marginTop: '4px' }}>
-                    {new Date(ses.last_message_at).toLocaleString('bg-BG')}
                   </div>
                 </div>
               ))
             )}
           </div>
           
-          {/* Чат прозорец за админ */}
           <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '16px', display: 'flex', flexDirection: 'column' }}>
             {selectedSession ? (
               <>
@@ -243,141 +256,24 @@ export default function AdminChat() {
                 </div>
                 
                 <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
-                  {messages.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: '#64748b', marginTop: '2rem' }}>
-                      Няма съобщения в този чат
-                    </div>
-                  ) : (
-                    messages.map((msg, idx) => (
-                      <div key={idx} style={{
-                        marginBottom: '1rem',
-                        display: 'flex',
-                        justifyContent: msg.sender === 'admin' ? 'flex-end' : 'flex-start',
-                        alignItems: 'center',
-                        gap: '0.5rem'
-                      }}>
-                        <div style={{
-                          display: 'inline-block',
-                          padding: '0.5rem 1rem',
-                          borderRadius: '12px',
-                          background: msg.sender === 'admin' ? '#8b5cf6' : 'rgba(255,255,255,0.1)',
-                          color: 'white',
-                          maxWidth: '70%'
-                        }}>
-                          {msg.message}
-                        </div>
-                        <button 
-                          onClick={() => deleteMessage(msg.id)}
-                          style={{
-                            background: 'rgba(255,0,0,0.3)',
-                            border: 'none',
-                            borderRadius: '8px',
-                            padding: '4px 8px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                            color: 'white'
-                          }}
-                          title="Изтрий съобщение"
-                        >
-                          🗑️
-                        </button>
+                  {messages.map((msg, idx) => (
+                    <div key={idx} style={{ marginBottom: '1rem', textAlign: msg.sender === 'admin' ? 'right' : 'left' }}>
+                      <div style={{ display: 'inline-block', padding: '0.5rem 1rem', borderRadius: '12px', background: msg.sender === 'admin' ? '#8b5cf6' : 'rgba(255,255,255,0.1)', color: 'white', maxWidth: '70%' }}>
+                        {msg.message}
                       </div>
-                    ))
-                  )}
+                      <button onClick={() => deleteMessage(msg.id)} style={{ marginLeft: '0.5rem', background: 'rgba(255,0,0,0.3)', border: 'none', borderRadius: '8px', padding: '4px 8px', cursor: 'pointer' }}>🗑️</button>
+                    </div>
+                  ))}
                 </div>
                 
-                {/* Четирите бутона долу */}
-                <div style={{ padding: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <button 
-                      onClick={deleteSelectedSession}
-                      style={{
-                        background: '#ea580c',
-                        border: 'none',
-                        borderRadius: '8px',
-                        padding: '0.5rem 1rem',
-                        cursor: 'pointer',
-                        color: 'white',
-                        fontSize: '0.8rem'
-                      }}
-                      title="Изтрива само този чат (потребителят може да пише отново)"
-                    >
-                      🗑️ Изтрий чат
-                    </button>
-                    <button 
-                      onClick={blockUser}
-                      style={{
-                        background: '#7c3aed',
-                        border: 'none',
-                        borderRadius: '8px',
-                        padding: '0.5rem 1rem',
-                        cursor: 'pointer',
-                        color: 'white',
-                        fontSize: '0.8rem'
-                      }}
-                      title="Блокира потребителя (не може да пише, но чатът остава)"
-                    >
-                      🚫 Блокирай потребител
-                    </button>
-                    <button 
-                      onClick={deleteUser}
-                      style={{
-                        background: '#dc2626',
-                        border: 'none',
-                        borderRadius: '8px',
-                        padding: '0.5rem 1rem',
-                        cursor: 'pointer',
-                        color: 'white',
-                        fontSize: '0.8rem'
-                      }}
-                      title="Изтрива потребителя от списъка (целият чат се премахва)"
-                    >
-                      ❌ Изтрий потребител
-                    </button>
-                    <button 
-                      onClick={saveChatToFile}
-                      style={{
-                        background: '#059669',
-                        border: 'none',
-                        borderRadius: '8px',
-                        padding: '0.5rem 1rem',
-                        cursor: 'pointer',
-                        color: 'white',
-                        fontSize: '0.8rem'
-                      }}
-                      title="Запази чата на диска"
-                    >
-                      💾 Запиши чат
-                    </button>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <input
-                      type="text"
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                      placeholder="Напиши отговор..."
-                      style={{
-                        width: '250px',
-                        padding: '0.5rem',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(139, 92, 246, 0.5)',
-                        background: 'rgba(0,0,0,0.5)',
-                        color: 'white',
-                        outline: 'none'
-                      }}
-                    />
-                    <button onClick={sendMessage} style={{
-                      padding: '0.5rem 1rem',
-                      background: '#8b5cf6',
-                      border: 'none',
-                      borderRadius: '8px',
-                      color: 'white',
-                      cursor: 'pointer'
-                    }}>
-                      📤 Изпрати
-                    </button>
-                  </div>
+                <div style={{ padding: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button onClick={deleteSelectedSession} style={{ background: '#ea580c', border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', cursor: 'pointer', color: 'white' }}>🗑️ Изтрий чат</button>
+                  <button onClick={blockUser} style={{ background: '#7c3aed', border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', cursor: 'pointer', color: 'white' }}>🚫 Блокирай</button>
+                  <button onClick={deleteUser} style={{ background: '#dc2626', border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', cursor: 'pointer', color: 'white' }}>❌ Изтрий потребител</button>
+                  <button onClick={saveChatToFile} style={{ background: '#059669', border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', cursor: 'pointer', color: 'white' }}>💾 Запиши чат</button>
+                  <div style={{ flex: 1 }}></div>
+                  <input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && sendMessage()} placeholder="Отговор..." style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #8b5cf6', background: 'rgba(0,0,0,0.5)', color: 'white', width: '200px' }} />
+                  <button onClick={sendMessage} style={{ background: '#8b5cf6', border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', cursor: 'pointer', color: 'white' }}>📤</button>
                 </div>
               </>
             ) : (

@@ -467,21 +467,36 @@ const handleUpdateBlogPost = async (e) => {
         <button 
           onClick={() => {
             sessionStorage.removeItem('admin_token');
+            <button 
+  onClick={() => {
+    // Изтрива sessionStorage
+    sessionStorage.removeItem('admin_token');
+    // Изтрива cookie
+    document.cookie = 'admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT';
+    window.location.href = '/';
+  }}
+  style={{ background: 'rgba(255,0,0,0.3)', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}
+>
+  🚪 Изход
+</button>
             window.location.href = '/';
           }}
           style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}
         >
           ← Към сайта
         </button>
-        <button 
-          onClick={() => {
-            sessionStorage.removeItem('admin_token');
-            window.location.href = '/';
-          }}
-          style={{ background: 'rgba(255,0,0,0.3)', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}
-        >
-          🚪 Изход
-        </button>
+       <button 
+  onClick={() => {
+    // Изтрива sessionStorage
+    sessionStorage.removeItem('admin_token');
+    // Изтрива cookie
+    document.cookie = 'admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT';
+    window.location.href = '/';
+  }}
+  style={{ background: 'rgba(255,0,0,0.3)', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}
+>
+  🚪 Изход
+</button>
       </div>
 
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
