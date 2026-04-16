@@ -29,6 +29,7 @@ export default function AdminChat() {
       const res = await fetch(`/api/chat?sessionId=${sessionId}&admin=true`);
       const data = await res.json();
       setMessages(data.messages || []);
+       await loadSessions();    
     } catch (err) {
       console.error('Грешка при зареждане на съобщения:', err);
     }
