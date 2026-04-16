@@ -24,16 +24,18 @@ export default function AdminChat() {
   };
 
   // Зареждане на съобщения за избрана сесия
-  const loadMessages = async (sessionId) => {
-    try {
-      const res = await fetch(`/api/chat?sessionId=${sessionId}&admin=true`);
-      const data = await res.json();
-      setMessages(data.messages || []);
-       await loadSessions();    
-    } catch (err) {
-      console.error('Грешка при зареждане на съобщения:', err);
-    }
-  };
+ const loadMessages = async (sessionId) => {
+  try {
+    const res = await fetch(`/api/chat?sessionId=${sessionId}&admin=true`);
+    const data = await res.json();
+    setMessages(data.messages || []);
+    
+    // 🔴 КЛЮЧОВОТО: Обнови списъка със сесии, за да премахне червената точка
+    await loadSessions();
+  } catch (err) {
+    console.error('Грешка при зареждане на съобщения:', err);
+  }
+};
 
   // Изпращане на съобщение
   const sendMessage = async () => {
