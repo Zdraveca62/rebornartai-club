@@ -3,8 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Suspense } from 'react'; // Добавете този импорт
 
-export default function AdminLogin() {
+// Това казва на Next.js да не прави prerender за тази страница и да я рендира динамично
+export const dynamic = 'force-dynamic';
+
+// Изолирайте логиката, която използва useSearchParams, в отделен компонент
+function LoginForm() {
   const [token, setToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -13,17 +18,15 @@ export default function AdminLogin() {
   
   const ADMIN_TOKEN = 'reborn_admin_9f7d3e8a2c1b5f6e9d4a7c8b3e2f1a9d';
 
-  // Проверка дали вече е влязъл
+  // Проверка за вече влязъл потребител
   useEffect(() => {
     const checkExistingToken = async () => {
-      // Проверка за cookie
       const hasCookie = document.cookie.includes('admin_token=');
       if (hasCookie) {
         router.push('/admin');
         return;
       }
       
-      // Проверка за sessionStorage (старият метод)
       const savedToken = sessionStorage.getItem('admin_token');
       if (savedToken) {
         const res = await fetch('/api/admin', {
@@ -33,7 +36,6 @@ export default function AdminLogin() {
         });
         const data = await res.json();
         if (data.valid) {
-          // Възстановяване на cookie
           document.cookie = `admin_token=${savedToken}; path=/; max-age=28800; SameSite=Lax`;
           router.push('/admin');
         }
@@ -64,13 +66,9 @@ export default function AdminLogin() {
       const data = await res.json();
       
       if (data.valid) {
-        // Запазване в sessionStorage (за стари методи)
         sessionStorage.setItem('admin_token', token.trim());
-        
-        // Запазване в cookie (за middleware защита)
         document.cookie = `admin_token=${token.trim()}; path=/; max-age=28800; SameSite=Lax`;
         
-        // Пренасочване към страницата, от която е дошъл, или към admin
         const from = searchParams.get('from');
         router.push(from || '/admin');
       } else {
@@ -87,6 +85,88 @@ export default function AdminLogin() {
 
   return (
     <div style={{
+      background: 'rgba(255,255,255,0.1)',
+      backdropFilter: 'blur(10px)',
+      borderRadius: '24px',
+      padding: '2rem',
+      width: '100%',
+      maxWidth: '400px',
+      border: '1px solid rgba(139, 92, 246, 0.3)'
+    }}>
+      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🔐</div>
+        <h1 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '0.5rem' }}>Администраторски вход</h1>
+        <p style={{ color: '#9ca3af', fontSize: '0.8rem' }}>Въведете валиден токен за достъп</p>
+      </div>
+      
+      <form onSubmit={handleSubmit}>
+        <input
+          type="password"
+          placeholder="Въведете администраторски токен"
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+          autoComplete="off"
+          style={{
+            width: '100%',
+            padding: '0.75rem',
+            marginBottom: '1rem',
+            borderRadius: '8px',
+            border: 'none',
+            background: 'rgba(255,255,255,0.2)',
+            color: 'white',
+            fontSize: '1rem',
+            outline: 'none'
+          }}
+        />
+        
+        {error && (
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.2)',
+            border: '1px solid #ef4444',
+            borderRadius: '8px',
+            padding: '0.5rem',
+            marginBottom: '1rem',
+            color: '#fca5a5',
+            fontSize: '0.8rem',
+            textAlign: 'center'
+          }}>
+            ❌ {error}
+          </div>
+        )}
+        
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '0.75rem',
+            background: loading ? '#6b7280' : '#8b5cf6',
+            border: 'none',
+            borderRadius: '8px',
+            color: 'white',
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            transition: 'background 0.3s'
+          }}
+        >
+          {loading ? 'Проверка...' : 'Вход'}
+        </button>
+      </form>
+      
+      <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+        <Link href="/" style={{ color: '#8b5cf6', textDecoration: 'none', fontSize: '0.8rem' }}>
+          ← Назад към сайта
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// Основната страница, която обвива LoginForm в Suspense
+export default function AdminLogin() {
+  return (
+    <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #1e1b4b, #000000, #4c1d95)',
       display: 'flex',
@@ -94,82 +174,9 @@ export default function AdminLogin() {
       justifyContent: 'center',
       padding: '1rem'
     }}>
-      <div style={{
-        background: 'rgba(255,255,255,0.1)',
-        backdropFilter: 'blur(10px)',
-        borderRadius: '24px',
-        padding: '2rem',
-        width: '100%',
-        maxWidth: '400px',
-        border: '1px solid rgba(139, 92, 246, 0.3)'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🔐</div>
-          <h1 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '0.5rem' }}>Администраторски вход</h1>
-          <p style={{ color: '#9ca3af', fontSize: '0.8rem' }}>Въведете валиден токен за достъп</p>
-        </div>
-        
-        <form onSubmit={handleSubmit}>
-          <input
-            type="password"
-            placeholder="Въведете администраторски токен"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            autoComplete="off"
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              marginBottom: '1rem',
-              borderRadius: '8px',
-              border: 'none',
-              background: 'rgba(255,255,255,0.2)',
-              color: 'white',
-              fontSize: '1rem',
-              outline: 'none'
-            }}
-          />
-          
-          {error && (
-            <div style={{
-              background: 'rgba(239, 68, 68, 0.2)',
-              border: '1px solid #ef4444',
-              borderRadius: '8px',
-              padding: '0.5rem',
-              marginBottom: '1rem',
-              color: '#fca5a5',
-              fontSize: '0.8rem',
-              textAlign: 'center'
-            }}>
-              ❌ {error}
-            </div>
-          )}
-          
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              background: loading ? '#6b7280' : '#8b5cf6',
-              border: 'none',
-              borderRadius: '8px',
-              color: 'white',
-              fontSize: '1rem',
-              fontWeight: 'bold',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background 0.3s'
-            }}
-          >
-            {loading ? 'Проверка...' : 'Вход'}
-          </button>
-        </form>
-        
-        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-          <Link href="/" style={{ color: '#8b5cf6', textDecoration: 'none', fontSize: '0.8rem' }}>
-            ← Назад към сайта
-          </Link>
-        </div>
-      </div>
+      <Suspense fallback={<div style={{ color: 'white' }}>Зареждане...</div>}>
+        <LoginForm />
+      </Suspense>
     </div>
   );
 }
