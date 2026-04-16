@@ -1,24 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Suspense } from 'react';
 
-// Това принуждава страницата да се рендира динамично и спира грешката при build
 export const dynamic = 'force-dynamic';
 
-// Изолираме логиката с useSearchParams в отделен компонент
 function LoginForm() {
   const [token, setToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+  const hasCheckedRef = useRef(false); // Предотвратява многократни проверки
+
   const ADMIN_TOKEN = 'reborn_admin_9f7d3e8a2c1b5f6e9d4a7c8b3e2f1a9d';
 
   useEffect(() => {
+    // Предотвратява повторно изпълнение
+    if (hasCheckedRef.current) return;
+    hasCheckedRef.current = true;
+
     const checkExistingToken = async () => {
       const hasCookie = document.cookie.includes('admin_token=');
       if (hasCookie) {
@@ -28,15 +31,19 @@ function LoginForm() {
       
       const savedToken = sessionStorage.getItem('admin_token');
       if (savedToken) {
-        const res = await fetch('/api/admin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: savedToken })
-        });
-        const data = await res.json();
-        if (data.valid) {
-          document.cookie = `admin_token=${savedToken}; path=/; max-age=28800; SameSite=Lax`;
-          router.push('/admin');
+        try {
+          const res = await fetch('/api/admin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: savedToken })
+          });
+          const data = await res.json();
+          if (data.valid) {
+            document.cookie = `admin_token=${savedToken}; path=/; max-age=28800; SameSite=Lax`;
+            router.push('/admin');
+          }
+        } catch (err) {
+          console.error('Грешка при проверка:', err);
         }
       }
     };
@@ -162,7 +169,6 @@ function LoginForm() {
   );
 }
 
-// Основната страница, която обвива LoginForm в Suspense
 export default function AdminLogin() {
   return (
     <div style={{
