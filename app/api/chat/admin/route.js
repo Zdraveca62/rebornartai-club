@@ -4,6 +4,15 @@ import { NextResponse } from 'next/server';
 // GET – взима съобщенията за дадена сесия
 export async function GET(request) {
   try {
+    const { data: sessions, error } = await supabase
+    .from('chat_sessions')
+    .select('*')
+    .eq('status', 'active')
+    .order('last_message_at', { ascending: false });
+  
+  console.log('📊 Резултат от Supabase:', sessions);
+  console.log('❌ Грешка:', error);
+
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
     const admin = searchParams.get('admin') === 'true';
