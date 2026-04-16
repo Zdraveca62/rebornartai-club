@@ -45,3 +45,37 @@ export async function GET(request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+// DELETE – изтрива цяла чат сесия (само за админ)
+export async function DELETE(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const sessionId = searchParams.get('sessionId');
+    
+    if (!sessionId) {
+      return NextResponse.json({ error: 'Missing sessionId' }, { status: 400 });
+    }
+    
+    // Изтрива всички съобщения, свързани със сесията
+    const { error: messagesError } = await supabase
+      .from('chat_messages')
+      .delete()
+      .eq('session_id', sessionId);
+    
+    if (messagesError) throw messagesError;
+    
+    // Изтрива самата сесия
+    const { error: sessionError } = await supabase
+      .from('chat_sessions')
+      .delete()
+      .eq('session_id', sessionId);
+    
+    if (sessionError) throw sessionError;
+    
+    return NextResponse.json({ success: true, message: 'Чат сесията е изтрита' });
+    
+  } catch (error) {
+    console.error('Грешка при DELETE session:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

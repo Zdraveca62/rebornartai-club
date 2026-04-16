@@ -64,6 +64,7 @@ export default function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('stats');
+
   const [songs, setSongs] = useState([]);
   const [videos, setVideos] = useState([]);
   const [stats, setStats] = useState({ 
@@ -90,6 +91,7 @@ const [blogCurrentPage, setBlogCurrentPage] = useState(1);
   const [songsCurrentPage, setSongsCurrentPage] = useState(1);
   const [videosCurrentPage, setVideosCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
+  const [chatStats, setChatStats] = useState({ totalMessages: 0, unreadMessages: 0, activeSessions: 0 });
   const router = useRouter();
 
   const fetchSongs = async () => {
@@ -160,6 +162,18 @@ const fetchStats = async () => {
         
         const totalSeconds = totalDurationMap.get(deviceKey) || 0;
         const todaySeconds = todayDurationMap.get(deviceKey) || 0;
+
+        const fetchChatStats = async () => {
+  try {
+    const res = await fetch('/api/chat-stats');
+    const data = await res.json();
+    if (data.success) {
+      setChatStats(data.stats);
+    }
+  } catch (error) {
+    console.error('Грешка при зареждане на чат статистика:', error);
+  }
+};
         
         if (!locationMap.has(key)) {
           locationMap.set(key, {
@@ -240,6 +254,7 @@ const fetchStats = async () => {
           await fetchVideos();
           await fetchStats();
           await fetchBlogPosts();
+         //await fetchChatStats();
         } else {
           sessionStorage.removeItem('admin_token');
           router.push('/admin-login?error=expired');
@@ -250,7 +265,7 @@ const fetchStats = async () => {
       
       setIsLoading(false);
     };
-    
+
     checkAuth();
   }, [router]);
 
@@ -548,7 +563,25 @@ const handleUpdateBlogPost = async (e) => {
                 </tbody>
               </table>
             </div>
-
+            
+            {/* Ред за чат статистика */}
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+  <div style={{ background: 'rgba(139, 92, 246, 0.2)', padding: '1rem', borderRadius: '16px', textAlign: 'center' }}>
+    <div style={{ fontSize: '2rem' }}>💬</div>
+    <div style={{ fontSize: '0.8rem', color: '#9ca3af' }}>Общо съобщения</div>
+    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#8b5cf6' }}>{chatStats.totalMessages || 0}</div>
+  </div>
+  <div style={{ background: 'rgba(236, 72, 153, 0.2)', padding: '1rem', borderRadius: '16px', textAlign: 'center' }}>
+    <div style={{ fontSize: '2rem' }}>🔴</div>
+    <div style={{ fontSize: '0.8rem', color: '#9ca3af' }}>Непрочетени</div>
+    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#ec4899' }}>{chatStats.unreadMessages || 0}</div>
+  </div>
+  <div style={{ background: 'rgba(16, 185, 129, 0.2)', padding: '1rem', borderRadius: '16px', textAlign: 'center' }}>
+    <div style={{ fontSize: '2rem' }}>🟢</div>
+    <div style={{ fontSize: '0.8rem', color: '#9ca3af' }}>Активни сесии</div>
+    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#10b981' }}>{chatStats.activeSessions || 0}</div>
+  </div>
+</div>
             {totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
                 <button onClick={() => goToPage(1)} disabled={stats.currentPage === 1} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: stats.currentPage === 1 ? 'not-allowed' : 'pointer', opacity: stats.currentPage === 1 ? 0.5 : 1 }}>«</button>
