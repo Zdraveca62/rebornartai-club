@@ -181,6 +181,15 @@ const deleteUser = async () => {
   };
 
   useEffect(() => {
+  const token = sessionStorage.getItem('admin_token');
+  const validToken = 'reborn_admin_9f7d3e8a2c1b5f6e9d4a7c8b3e2f1a9d';
+  
+  if (!token || token !== validToken) {
+    window.location.href = '/admin-login';
+  }
+}, []);
+
+  useEffect(() => {
     loadSessions();
     const interval = setInterval(loadSessions, 5000);
     return () => clearInterval(interval);
