@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import TopSongs from '@/app/components/TopSongs';
 
 export default function AIVideosPage() {
   const [videos, setVideos] = useState([]);
