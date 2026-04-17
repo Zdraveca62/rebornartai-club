@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import TopSongs from '@/app/components/TopSongs';
+
 
 export default function CategoryVideosPage() {
   const { category } = useParams();
@@ -85,7 +87,11 @@ const handleVideoClick = async (video) => {
       <h1 style={{ fontSize: '3rem', fontWeight: 'bold', color: 'white', textAlign: 'center', marginBottom: '2rem' }}>
         {currentCategory.icon} {currentCategory.title}
       </h1>
-
+      
+      <div style={{ maxWidth: '1200px', margin: '0 auto 2rem auto' }}>
+        <TopSongs />
+      </div> 
+      
       {videos.length === 0 ? (
         <div style={{ textAlign: 'center', color: '#9ca3af', marginTop: '3rem' }}>
           <p style={{ fontSize: '1.2rem' }}>❌ Няма добавени видеа в тази категория.</p>

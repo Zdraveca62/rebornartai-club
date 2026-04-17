@@ -54,6 +54,10 @@ export default function AIVideosPage() {
       <h1 style={{ fontSize: '3rem', fontWeight: 'bold', color: 'white', textAlign: 'center', marginBottom: '3rem' }}>
         🎬 AI Видеа
       </h1>
+      
+      <div style={{ maxWidth: '1200px', margin: '0 auto 2rem auto' }}>
+       <TopSongs />
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
         

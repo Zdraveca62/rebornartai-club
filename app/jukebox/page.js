@@ -227,10 +227,20 @@ export default function Jukebox() {
     }
   };
 
-  const addToQueue = (song) => {
-    console.log(`➕ Избрани песни: ${song.title}`);
-    setQueue(prev => [...prev, song]);
-  };
+const addToQueue = (song) => {
+  // Отчитане на слушането за Топ 5
+  fetch('/api/jukebox-stats', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      songId: song.id,
+      songTitle: song.title,
+      songLanguage: song.language
+    })
+  }).catch(err => console.error('Грешка при отчитане:', err));
+  
+  setQueue(prev => [...prev, song]);
+};
 
   const removeFromQueue = (index) => {
     console.log(`❌ Премахнати от избрани песни индекс ${index}`);
