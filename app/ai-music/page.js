@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import TopSongs from '@/app/components/TopSongs'
 
 export default function AIMusicPage() {
   const [songs, setSongs] = useState([])
@@ -16,8 +17,21 @@ export default function AIMusicPage() {
   }, [])
 
   const filteredSongs = songs.filter(song => song.language === language)
-  console.log('🔍 Песни след филтър:', filteredSongs);
-  console.log('🔍 Всички песни:', songs);
+
+  const handleListen = async (song) => {
+    // Отчитане за Топ 5
+    await fetch('/api/jukebox-stats', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        songId: song.id,
+        songTitle: song.title,
+        songLanguage: song.language
+      })
+    });
+    window.open(`https://youtube.com/watch?v=${song.youtube_id}`);
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e1b4b, #000000, #4c1d95)', padding: '2rem' }}>
       
@@ -28,6 +42,11 @@ export default function AIMusicPage() {
       </Link>
 
       <h1 style={{ fontSize: '3rem', fontWeight: 'bold', color: 'white', textAlign: 'center', marginBottom: '2rem' }}>AI Music</h1>
+
+      {/* Топ 5 компонент */}
+      <div style={{ maxWidth: '1200px', margin: '0 auto 2rem auto' }}>
+        <TopSongs />
+      </div>
 
       <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '3rem' }}>
         <button onClick={() => setLanguage('bg')} style={{ background: language === 'bg' ? '#8b5cf6' : 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.75rem 2rem', borderRadius: '8px', cursor: 'pointer' }}>
@@ -44,7 +63,7 @@ export default function AIMusicPage() {
             <img src={song.cover_url} alt={song.title} style={{ width: '100%', borderRadius: '12px', marginBottom: '1rem' }} />
             <h3 style={{ color: 'white', marginBottom: '1rem' }}>{song.title}</h3>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-              <button onClick={() => window.open(`https://youtube.com/watch?v=${song.youtube_id}`)} style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>🎧 Слушай</button>
+              <button onClick={() => handleListen(song)} style={{ background: '#8b5cf6', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>🎧 Слушай</button>
               <button onClick={() => { setSelectedSong(song); setShowLyrics(true); }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>📜 Текст</button>
             </div>
           </div>
