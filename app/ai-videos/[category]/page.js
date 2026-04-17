@@ -42,11 +42,23 @@ export default function CategoryVideosPage() {
     return `https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`;
   };
 
-  const handleVideoClick = (video) => {
-    setSelectedVideo(video);
-    setShowDescription(false);
-    window.open(`https://youtube.com/watch?v=${video.youtube_id}`, '_blank');
-  };
+const handleVideoClick = async (video) => {
+  setSelectedVideo(video);
+  setShowDescription(false);
+  
+  // Отчитане за Топ 5
+  await fetch('/api/jukebox-stats', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      songId: video.id,
+      songTitle: video.title,
+      songLanguage: 'bg'
+    })
+  });
+  
+  window.open(`https://youtube.com/watch?v=${video.youtube_id}`, '_blank');
+};
 
   const handleDescriptionClick = (video) => {
     setSelectedVideo(video);
