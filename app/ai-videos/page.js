@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import TopSongs from '@/app/components/TopSongs';
+import TopSongsBlocks from '@/app/components/TopSongsBlocks';
 
 export default function AIVideosPage() {
   const [videos, setVideos] = useState([]);
@@ -52,12 +52,12 @@ export default function AIVideosPage() {
         </button>
       </Link>
 
-      <h1 style={{ fontSize: '3rem', fontWeight: 'bold', color: 'white', textAlign: 'center', marginBottom: '3rem' }}>
+      <h1 style={{ fontSize: '3rem', fontWeight: 'bold', color: 'white', textAlign: 'center', marginBottom: '2rem' }}>
         🎬 AI Видеа
       </h1>
-      
+
       <div style={{ maxWidth: '1200px', margin: '0 auto 2rem auto' }}>
-       <TopSongs />
+        <TopSongsBlocks type="video" onSongClick={() => {}} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
@@ -67,11 +67,7 @@ export default function AIVideosPage() {
           const hasVideos = count > 0;
           
           return (
-            <Link 
-              key={category.id} 
-              href={`/ai-videos/${category.id}`} 
-              style={{ textDecoration: 'none' }}
-            >
+            <Link key={category.id} href={`/ai-videos/${category.id}`} style={{ textDecoration: 'none' }}>
               <div style={{
                 background: 'rgba(255,255,255,0.1)',
                 backdropFilter: 'blur(10px)',
@@ -99,12 +95,7 @@ export default function AIVideosPage() {
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '0.5rem' }}>
                   {category.title}
                 </h2>
-                <p style={{ 
-                  color: hasVideos ? category.color : '#9ca3af', 
-                  fontSize: '1rem',
-                  fontWeight: 'bold',
-                  marginTop: '1rem'
-                }}>
+                <p style={{ color: hasVideos ? category.color : '#9ca3af', fontSize: '1rem', fontWeight: 'bold', marginTop: '1rem' }}>
                   {hasVideos ? `🎬 Налични видеа: ${count}` : '❌ Няма добавено видео'}
                 </p>
               </div>

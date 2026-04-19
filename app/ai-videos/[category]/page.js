@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import TopSongsBlocks from '@/app/components/TopSongsBlocks';
 import Link from 'next/link';
-import TopSongs from '@/app/components/TopSongs';
+
 
 
 export default function CategoryVideosPage() {
@@ -20,7 +21,7 @@ export default function CategoryVideosPage() {
     clients: { title: '🎥 Видео - Клиенти', icon: '🎥', color: '#f59e0b' }
   };
 
-  const currentCategory = categoryLabels[category] || { title: 'Видеа', icon: '🎬', color: '#8b5cf6' };
+  const currentCategory = categoryLabels[category] || { title: 'Видео Записи', icon: '🎬', color: '#8b5cf6' };
 
   useEffect(() => {
     fetchVideos();
@@ -46,16 +47,16 @@ export default function CategoryVideosPage() {
 
 const handleVideoClick = async (video) => {
   setSelectedVideo(video);
-  setShowDescription(false);
   
-  // Отчитане за Топ 5
+  // Отчитане за Топ 5 – като ВИДЕО
   await fetch('/api/jukebox-stats', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       songId: video.id,
       songTitle: video.title,
-      songLanguage: 'bg'
+      songLanguage: 'bg',
+      itemType: 'video'  // <- ВАЖНО!
     })
   });
   
@@ -88,9 +89,8 @@ const handleVideoClick = async (video) => {
         {currentCategory.icon} {currentCategory.title}
       </h1>
       
-      <div style={{ maxWidth: '1200px', margin: '0 auto 2rem auto' }}>
-        <TopSongs />
-      </div> 
+
+
       
       {videos.length === 0 ? (
         <div style={{ textAlign: 'center', color: '#9ca3af', marginTop: '3rem' }}>

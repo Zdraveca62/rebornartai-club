@@ -2,28 +2,28 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import TopSongsBlocks from '@/app/components/TopSongsBlocks';
+import TopVideosBlocks from '@/app/components/TopVideosBlocks';
+import TopVideosStats from '@/app/components/TopVideosStats';
 
-export default function AIMusic() {
-  const [songs, setSongs] = useState([]);
+export default function CategoryPage({ category, title, description, icon }) {
+  const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // 'all', 'bg', 'en'
   const carouselRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   useEffect(() => {
-    fetch('/api/songs')
+    fetch(`/api/videos?category=${category}`)
       .then(res => res.json())
       .then(data => {
-        setSongs(data);
+        setVideos(data);
         setLoading(false);
       })
       .catch(err => {
-        console.error('Грешка при зареждане на песните:', err);
+        console.error('Грешка при зареждане на видеа:', err);
         setLoading(false);
       });
-  }, []);
+  }, [category]);
 
   const checkScrollButtons = () => {
     if (carouselRef.current) {
@@ -37,7 +37,7 @@ export default function AIMusic() {
     checkScrollButtons();
     window.addEventListener('resize', checkScrollButtons);
     return () => window.removeEventListener('resize', checkScrollButtons);
-  }, [songs]);
+  }, [videos]);
 
   const scroll = (direction) => {
     if (carouselRef.current) {
@@ -54,20 +54,16 @@ export default function AIMusic() {
     return text.substring(0, maxLength) + '...';
   };
 
-  const getThumbnail = (song) => {
-    if (song.cover_url && song.cover_url !== '') {
-      return song.cover_url;
+  // Функция за получаване на тъмбнейл
+  const getThumbnail = (video) => {
+    if (video.cover_url && video.cover_url !== '') {
+      return video.cover_url;
     }
-    if (song.youtube_id) {
-      return `https://img.youtube.com/vi/${song.youtube_id}/mqdefault.jpg`;
+    if (video.youtube_id) {
+      return `https://img.youtube.com/vi/${video.youtube_id}/mqdefault.jpg`;
     }
     return 'https://via.placeholder.com/100x56?text=No+Image';
   };
-
-  const filteredSongs = songs.filter(song => {
-    if (filter === 'all') return true;
-    return song.language === filter;
-  });
 
   if (loading) {
     return (
@@ -80,66 +76,25 @@ export default function AIMusic() {
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e1b4b, #000000, #4c1d95)', padding: '2rem', color: 'white' }}>
       
-      <Link href="/">
+      <Link href="/ai-videos">
         <button style={{ position: 'fixed', top: '1rem', left: '1rem', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', zIndex: 20 }}>
           ← Назад
         </button>
       </Link>
 
-      <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '0.5rem' }}>🎵 AI Music</h1>
-      <p style={{ textAlign: 'center', marginBottom: '2rem', color: '#9ca3af' }}>Открий музиката, генерирана с изкуствен интелект</p>
+      <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '0.5rem' }}>{icon} {title}</h1>
+      <p style={{ textAlign: 'center', marginBottom: '2rem', color: '#9ca3af' }}>{description}</p>
 
       {/* Двата неонови блока */}
-      <TopSongsBlocks />
-
-      {/* Филтър бутони */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '2rem' }}>
-        <button 
-          onClick={() => setFilter('all')}
-          style={{ 
-            background: filter === 'all' ? '#8b5cf6' : 'rgba(255,255,255,0.2)', 
-            border: 'none', 
-            color: 'white', 
-            padding: '0.5rem 1.5rem', 
-            borderRadius: '8px', 
-            cursor: 'pointer',
-            fontWeight: filter === 'all' ? 'bold' : 'normal'
-          }}
-        >
-          Всички
-        </button>
-        <button 
-          onClick={() => setFilter('bg')}
-          style={{ 
-            background: filter === 'bg' ? '#8b5cf6' : 'rgba(255,255,255,0.2)', 
-            border: 'none', 
-            color: 'white', 
-            padding: '0.5rem 1.5rem', 
-            borderRadius: '8px', 
-            cursor: 'pointer',
-            fontWeight: filter === 'bg' ? 'bold' : 'normal'
-          }}
-        >
-          🇧🇬 Български
-        </button>
-        <button 
-          onClick={() => setFilter('en')}
-          style={{ 
-            background: filter === 'en' ? '#8b5cf6' : 'rgba(255,255,255,0.2)', 
-            border: 'none', 
-            color: 'white', 
-            padding: '0.5rem 1.5rem', 
-            borderRadius: '8px', 
-            cursor: 'pointer',
-            fontWeight: filter === 'en' ? 'bold' : 'normal'
-          }}
-        >
-          🇬🇧 English
-        </button>
+      <div style={{ maxWidth: '1200px', margin: '0 auto 3rem auto', padding: '0 1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+          <TopVideosBlocks category={category} />
+          <TopVideosStats category={category} />
+        </div>
       </div>
 
-      {/* КАРУСЕЛ С ПЕСНИ */}
-      <h2 style={{ textAlign: 'center', marginBottom: '1rem', fontSize: '1.8rem' }}>📀 Всички песни</h2>
+      {/* КАРУСЕЛ С ВИДЕА */}
+      <h2 style={{ textAlign: 'center', marginBottom: '1rem', fontSize: '1.8rem' }}>📽️ Всички видеа</h2>
       <div style={{ position: 'relative', marginBottom: '2rem' }}>
         <button
           onClick={() => scroll('left')}
@@ -178,8 +133,8 @@ export default function AIMusic() {
             scrollbarWidth: 'thin'
           }}
         >
-          {filteredSongs.map((song) => (
-            <div key={song.id} style={{ 
+          {videos.map((video) => (
+            <div key={video.id} style={{ 
               flex: '0 0 auto', 
               textAlign: 'center',
               width: '120px'
@@ -196,8 +151,8 @@ export default function AIMusic() {
                 justifyContent: 'center'
               }}>
                 <img 
-                  src={getThumbnail(song)}
-                  alt={song.title}
+                  src={getThumbnail(video)}
+                  alt={video.title}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   onError={(e) => {
                     e.target.src = 'https://via.placeholder.com/100x56?text=No+Image';
@@ -205,41 +160,25 @@ export default function AIMusic() {
                 />
               </div>
               <div style={{ fontSize: '0.8rem', fontWeight: 'bold', maxWidth: '100px' }}>
-                {truncateText(song.title, 15)}
+                {truncateText(video.title, 15)}
               </div>
-              <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
-                {song.language === 'bg' ? '🇧🇬' : '🇬🇧'}
-              </div>
-              <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '4px' }}>
-                <a 
-                  href={`https://www.youtube.com/watch?v=${song.youtube_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ 
-                    background: '#ef4444', 
-                    color: 'white', 
-                    padding: '0.2rem 0.5rem', 
-                    borderRadius: '4px', 
-                    textDecoration: 'none', 
-                    fontSize: '0.7rem'
-                  }}
-                >
-                  🎬 Слушай
-                </a>
-                <Link href={`/ai-music/${song.id}`}>
-                  <button style={{ 
-                    background: '#8b5cf6', 
-                    color: 'white', 
-                    padding: '0.2rem 0.5rem', 
-                    borderRadius: '4px', 
-                    border: 'none', 
-                    fontSize: '0.7rem',
-                    cursor: 'pointer'
-                  }}>
-                    📄 Текст
-                  </button>
-                </Link>
-              </div>
+              <a 
+                href={`https://www.youtube.com/watch?v=${video.youtube_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ 
+                  background: '#ef4444', 
+                  color: 'white', 
+                  padding: '0.2rem 0.5rem', 
+                  borderRadius: '4px', 
+                  textDecoration: 'none', 
+                  fontSize: '0.7rem',
+                  marginTop: '4px',
+                  display: 'inline-block'
+                }}
+              >
+                Гледай
+              </a>
             </div>
           ))}
         </div>
