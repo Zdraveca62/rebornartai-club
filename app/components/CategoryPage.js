@@ -12,6 +12,36 @@ export default function CategoryPage({ category, title, description, icon }) {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
+
+
+  // Функция за отчитане на статистика за видео
+  const trackVideoView = async (video) => {
+    try {
+      await fetch('/api/jukebox-stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          songId: video.id,
+          songTitle: video.title,
+          songLanguage: 'bg',
+          item_type: 'video',
+          category: category
+        })
+      });
+      console.log('📊 Отчетено гледане на видео:', video.title);
+    } catch (err) {
+      console.error('Грешка при отчитане:', err);
+    }
+  };
+
+    // Функция за отваряне на YouTube + отчитане
+  const handleWatch = (video) => {
+    trackVideoView(video);
+    setTimeout(() => {
+      window.open(`https://www.youtube.com/watch?v=${video.youtube_id}`, '_blank');
+    }, 100);
+  };
+
   useEffect(() => {
     fetch(`/api/videos?category=${category}`)
       .then(res => res.json())
@@ -162,23 +192,21 @@ export default function CategoryPage({ category, title, description, icon }) {
               <div style={{ fontSize: '0.8rem', fontWeight: 'bold', maxWidth: '100px' }}>
                 {truncateText(video.title, 15)}
               </div>
-              <a 
-                href={`https://www.youtube.com/watch?v=${video.youtube_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ 
-                  background: '#ef4444', 
-                  color: 'white', 
-                  padding: '0.2rem 0.5rem', 
-                  borderRadius: '4px', 
-                  textDecoration: 'none', 
-                  fontSize: '0.7rem',
-                  marginTop: '4px',
-                  display: 'inline-block'
-                }}
-              >
-                Гледай
-              </a>
+  <button 
+    onClick={() => handleWatch(video)}
+    style={{ 
+      background: '#ef4444', 
+      color: 'white', 
+      padding: '0.2rem 0.5rem', 
+      borderRadius: '4px', 
+      border: 'none', 
+      fontSize: '0.7rem',
+      cursor: 'pointer',
+      marginTop: '4px'
+    }}
+  >
+    🎬 Гледай
+  </button>
             </div>
           ))}
         </div>

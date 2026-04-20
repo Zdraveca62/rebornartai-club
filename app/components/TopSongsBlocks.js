@@ -19,24 +19,20 @@ export default function TopSongsBlocks() {
       .catch(err => console.error('Грешка при зареждане на топ 5 от сайта:', err));
   }, []);
 
-  // Зареждане на Топ 5 в YouTube – без грешки в конзолата
+  // Зареждане на Топ 5 в YouTube
   useEffect(() => {
     fetch('/api/youtube-top')
       .then(res => res.json())
       .then(data => {
-        if (data.success && data.videos && data.videos.length > 0) {
+        if (data.success && data.videos) {
           setTopYouTube(data.videos);
         } else {
-          // Тихо логване – само предупреждение, не грешка
-          if (data.error && !data.error.includes('quota')) {
-            console.warn('YouTube API проблем:', data.error);
-          }
+          console.warn('YouTube API проблем:', data?.error || 'Няма данни');
           setTopYouTube([]);
         }
       })
       .catch(err => {
-        // Мълчаливо хващане – само предупреждение
-        console.warn('YouTube API заявката не успя:', err.message);
+        console.warn('YouTube API заявката не успя:', err);
         setTopYouTube([]);
       })
       .finally(() => setLoading(false));
@@ -46,11 +42,12 @@ export default function TopSongsBlocks() {
     return (
       <div style={{ maxWidth: '1200px', margin: '0 auto 3rem auto', padding: '0 1rem' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
-          {[1, 2].map(i => (
-            <div key={i} style={{ background: 'rgba(0, 0, 0, 0.7)', borderRadius: '24px', padding: '1.5rem', border: '2px solid #555', textAlign: 'center' }}>
-              <p style={{ color: '#888' }}>Зареждане...</p>
-            </div>
-          ))}
+          <div style={{ background: 'rgba(0, 0, 0, 0.7)', borderRadius: '24px', padding: '1.5rem', border: '2px solid #ff0040', textAlign: 'center' }}>
+            <p style={{ color: '#888' }}>Зареждане на YouTube топ...</p>
+          </div>
+          <div style={{ background: 'rgba(0, 0, 0, 0.7)', borderRadius: '24px', padding: '1.5rem', border: '2px solid #00ffff', textAlign: 'center' }}>
+            <p style={{ color: '#888' }}>Зареждане на сайт топ...</p>
+          </div>
         </div>
       </div>
     );
@@ -60,7 +57,7 @@ export default function TopSongsBlocks() {
     <div style={{ maxWidth: '1200px', margin: '0 auto 3rem auto', padding: '0 1rem' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
         
-        {/* Блок 1: Топ 5 в YouTube */}
+        {/* ========== ЧЕРВЕН БЛОК - ТОП 5 В YOUTUBE ========== */}
         <div style={{
           background: 'rgba(0, 0, 0, 0.7)',
           borderRadius: '24px',
@@ -103,12 +100,10 @@ export default function TopSongsBlocks() {
           </p>
           
           {topYouTube.length === 0 ? (
-            <p style={{ color: '#888', textAlign: 'center' }}>
-              {loading ? 'Зареждане...' : 'Няма данни в момента'}
-            </p>
+            <p style={{ color: '#888', textAlign: 'center' }}>Няма данни в момента</p>
           ) : (
             topYouTube.map((video, idx) => (
-              <a key={video.id || video.video_id} href={video.video_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+              <a key={video.id} href={video.videoUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -134,7 +129,7 @@ export default function TopSongsBlocks() {
                         {video.title?.length > 30 ? video.title.substring(0, 30) + '...' : video.title}
                       </div>
                       <div style={{ color: '#888', fontSize: '0.7rem' }}>
-                        ▶ {video.views ? video.views.toLocaleString() : 'N/A'} гледания
+                        ▶ {video.views?.toLocaleString() || 'N/A'} гледания
                       </div>
                     </div>
                   </div>
@@ -145,7 +140,7 @@ export default function TopSongsBlocks() {
           )}
         </div>
         
-        {/* Блок 2: Топ 5 в сайта */}
+        {/* ========== СИН БЛОК - ТОП 5 В САЙТА ========== */}
         <div style={{
           background: 'rgba(0, 0, 0, 0.7)',
           borderRadius: '24px',
@@ -191,7 +186,10 @@ export default function TopSongsBlocks() {
             <p style={{ color: '#888', textAlign: 'center' }}>Все още няма слушания</p>
           ) : (
             topSite.map((item, idx) => {
-              const youtubeUrl = item.youtube_id ? `https://www.youtube.com/watch?v=${item.youtube_id}` : '#';
+              const youtubeUrl = item.youtube_id 
+                ? `https://www.youtube.com/watch?v=${item.youtube_id}` 
+                : '#';
+              
               return (
                 <a 
                   key={item.song_id} 

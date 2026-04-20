@@ -64,36 +64,38 @@ export async function GET() {
 // POST запазва съществуващата ти логика
 export async function POST(request) {
   try {
-    const { songId, songTitle, songLanguage } = await request.json();
+    const { songId, songTitle, songLanguage, item_type, category } = await request.json();
     
-    // Проверка дали вече съществува запис за тази песен
+    // Проверка дали записът съществува
     const { data: existing } = await supabase
       .from('jukebox_stats')
       .select('id, listen_count')
       .eq('song_id', songId)
+      .eq('item_type', item_type || 'song')
       .single();
     
     if (existing) {
-      // Обновяване на съществуващ запис
       const { error } = await supabase
         .from('jukebox_stats')
-        .update({ 
+        .update({
           listen_count: existing.listen_count + 1,
-          last_listened: new Date().toISOString()
+          last_listened: new Date().toISOString(),
+          category: category || null
         })
-        .eq('song_id', songId);
+        .eq('song_id', songId)
+        .eq('item_type', item_type || 'song');
       
       if (error) throw error;
     } else {
-      // Създаване на нов запис
       const { error } = await supabase
         .from('jukebox_stats')
         .insert({
           song_id: songId,
           song_title: songTitle,
           song_language: songLanguage || 'bg',
+          item_type: item_type || 'song',
+          category: category || null,
           listen_count: 1,
-          item_type: 'song',
           last_listened: new Date().toISOString()
         });
       

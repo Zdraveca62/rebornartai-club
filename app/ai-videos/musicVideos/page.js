@@ -4,15 +4,8 @@ import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import TopVideosBlocks from '@/app/components/TopVideosBlocks';
 import TopVideosStats from '@/app/components/TopVideosStats';
-import CategoryPage from '@/app/components/CategoryPage';
 
-export default function MusicVideosPage() {
-  <CategoryPage 
-        category="impressions" 
-        title="Видео Импресии" 
-        description="Късометражни вдъхновяващи видео импресии" 
-        icon="🎬" 
-      />
+export default function ImpressionsPage() {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const carouselRef = useRef(null);
@@ -31,6 +24,34 @@ export default function MusicVideosPage() {
         setLoading(false);
       });
   }, []);
+
+  // Функция за отчитане на статистика за видео
+  const trackVideoView = async (video) => {
+    try {
+      await fetch('/api/jukebox-stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          songId: video.id,
+          songTitle: video.title,
+          songLanguage: 'bg',
+          item_type: 'video',
+          category: 'music_videos'
+        })
+      });
+      console.log('📊 Отчетено гледане на видео:', video.title);
+    } catch (err) {
+      console.error('Грешка при отчитане:', err);
+    }
+  };
+
+  // Функция за отваряне на YouTube + отчитане
+  const handleWatch = (video) => {
+    trackVideoView(video);
+    setTimeout(() => {
+      window.open(`https://www.youtube.com/watch?v=${video.youtube_id}`, '_blank');
+    }, 100);
+  };
 
   const checkScrollButtons = () => {
     if (carouselRef.current) {
@@ -61,6 +82,16 @@ export default function MusicVideosPage() {
     return text.substring(0, maxLength) + '...';
   };
 
+  const getThumbnail = (video) => {
+    if (video.cover_url && video.cover_url !== '') {
+      return video.cover_url;
+    }
+    if (video.youtube_id) {
+      return `https://img.youtube.com/vi/${video.youtube_id}/mqdefault.jpg`;
+    }
+    return 'https://via.placeholder.com/100x56?text=No+Image';
+  };
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e1b4b, #000000, #4c1d95)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -78,8 +109,8 @@ export default function MusicVideosPage() {
         </button>
       </Link>
 
-      <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '0.5rem' }}>🎬 Видео Импресии</h1>
-      <p style={{ textAlign: 'center', marginBottom: '2rem', color: '#9ca3af' }}>Късометражни вдъхновяващи видео импресии</p>
+      <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '0.5rem' }}>🎬 Music Videos</h1>
+      <p style={{ textAlign: 'center', marginBottom: '2rem', color: '#9ca3af' }}>Късометражни вдъхновяващи music_videos</p>
 
       {/* Двата неонови блока */}
       <div style={{ maxWidth: '1200px', margin: '0 auto 3rem auto', padding: '0 1rem' }}>
@@ -106,9 +137,6 @@ export default function MusicVideosPage() {
             borderRadius: '50%',
             width: '40px',
             height: '40px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
             cursor: canScrollLeft ? 'pointer' : 'not-allowed',
             opacity: canScrollLeft ? 1 : 0.4,
             color: 'white',
@@ -136,49 +164,46 @@ export default function MusicVideosPage() {
             <div key={video.id} style={{ 
               flex: '0 0 auto', 
               textAlign: 'center',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
               width: '120px'
             }}>
               <div style={{
                 width: '100px',
                 height: '56px',
-                backgroundColor: '#bfdbfe',
+                backgroundColor: '#1e1b4b',
                 borderRadius: '8px',
+                overflow: 'hidden',
+                marginBottom: '8px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '8px',
-                overflow: 'hidden'
+                justifyContent: 'center'
               }}>
                 <img 
-                  src={video.cover_url || `https://img.youtube.com/vi/${video.youtube_id}/mqdefault.jpg`}
+                  src={getThumbnail(video)}
                   alt={video.title}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => {
+                    e.target.src = 'https://via.placeholder.com/100x56?text=No+Image';
+                  }}
                 />
               </div>
               <div style={{ fontSize: '0.8rem', fontWeight: 'bold', maxWidth: '100px' }}>
                 {truncateText(video.title, 15)}
               </div>
-              <a 
-                href={`https://www.youtube.com/watch?v=${video.youtube_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button 
+                onClick={() => handleWatch(video)}
                 style={{ 
                   background: '#ef4444', 
                   color: 'white', 
                   padding: '0.2rem 0.5rem', 
                   borderRadius: '4px', 
-                  textDecoration: 'none', 
+                  border: 'none', 
                   fontSize: '0.7rem',
-                  marginTop: '4px',
-                  display: 'inline-block'
+                  cursor: 'pointer',
+                  marginTop: '4px'
                 }}
               >
-                Гледай
-              </a>
+                🎬 Гледай
+              </button>
             </div>
           ))}
         </div>
@@ -197,9 +222,6 @@ export default function MusicVideosPage() {
             borderRadius: '50%',
             width: '40px',
             height: '40px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
             cursor: canScrollRight ? 'pointer' : 'not-allowed',
             opacity: canScrollRight ? 1 : 0.4,
             color: 'white',

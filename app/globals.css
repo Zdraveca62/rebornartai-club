@@ -17,3 +17,23 @@
   50% { transform: translateY(10px); }
 }
 
+/* Дефиниране на шрифта */
+@font-face {
+  font-family: 'Audex';
+  src: url('/fonts/AudexItalic-nAj3P.ttf') format('truetype');
+  font-weight: normal;
+  font-style: italic;
+  font-display: swap; /* Подобрява зареждането */
+}
+
+/* Прилагане на шрифта за целия сайт */
+body, p, button, a, .carousel-title, .card-description, .top5-subtitle {
+  font-family: 'Audex', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Можеш да го използваш и за специфични елементи */
+h1, h2, h3, .section-title, .top5-title, .card-title, .neon-text {
+  font-family: 'Audex', monospace;
+}
+
+

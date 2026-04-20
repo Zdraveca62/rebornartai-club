@@ -12,6 +12,7 @@ export default function AIMusic() {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
+  // Зареждане на песните
   useEffect(() => {
     fetch('/api/songs')
       .then(res => res.json())
@@ -24,6 +25,32 @@ export default function AIMusic() {
         setLoading(false);
       });
   }, []);
+
+  // Функция за отчитане на статистика
+  const trackListen = async (song) => {
+    try {
+      await fetch('/api/jukebox-stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          songId: song.id,
+          songTitle: song.title,
+          songLanguage: song.language
+        })
+      });
+      console.log('📊 Отчетено слушане:', song.title);
+    } catch (err) {
+      console.error('Грешка при отчитане:', err);
+    }
+  };
+
+  // Функция за отваряне на YouTube + отчитане
+  const handleListen = (song) => {
+    trackListen(song);
+    setTimeout(() => {
+      window.open(`https://www.youtube.com/watch?v=${song.youtube_id}`, '_blank');
+    }, 100);
+  };
 
   const checkScrollButtons = () => {
     if (carouselRef.current) {
@@ -102,8 +129,7 @@ export default function AIMusic() {
             color: 'white', 
             padding: '0.5rem 1.5rem', 
             borderRadius: '8px', 
-            cursor: 'pointer',
-            fontWeight: filter === 'all' ? 'bold' : 'normal'
+            cursor: 'pointer'
           }}
         >
           Всички
@@ -116,8 +142,7 @@ export default function AIMusic() {
             color: 'white', 
             padding: '0.5rem 1.5rem', 
             borderRadius: '8px', 
-            cursor: 'pointer',
-            fontWeight: filter === 'bg' ? 'bold' : 'normal'
+            cursor: 'pointer'
           }}
         >
           🇧🇬 Български
@@ -130,8 +155,7 @@ export default function AIMusic() {
             color: 'white', 
             padding: '0.5rem 1.5rem', 
             borderRadius: '8px', 
-            cursor: 'pointer',
-            fontWeight: filter === 'en' ? 'bold' : 'normal'
+            cursor: 'pointer'
           }}
         >
           🇬🇧 English
@@ -211,21 +235,20 @@ export default function AIMusic() {
                 {song.language === 'bg' ? '🇧🇬' : '🇬🇧'}
               </div>
               <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '4px' }}>
-                <a 
-                  href={`https://www.youtube.com/watch?v=${song.youtube_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button 
+                  onClick={() => handleListen(song)}
                   style={{ 
                     background: '#ef4444', 
                     color: 'white', 
                     padding: '0.2rem 0.5rem', 
                     borderRadius: '4px', 
-                    textDecoration: 'none', 
-                    fontSize: '0.7rem'
+                    border: 'none', 
+                    fontSize: '0.7rem',
+                    cursor: 'pointer'
                   }}
                 >
                   🎬 Слушай
-                </a>
+                </button>
                 <Link href={`/ai-music/${song.id}`}>
                   <button style={{ 
                     background: '#8b5cf6', 
