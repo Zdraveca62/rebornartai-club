@@ -108,14 +108,6 @@ const getThumbnail = (video) => {
   return 'https://via.placeholder.com/100x56?text=No+Image';
 };
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e1b4b, #000000, #4c1d95)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        Зареждане...
-      </div>
-    );
-  }
-
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e1b4b, #000000, #4c1d95)', padding: '2rem', color: 'white' }}>
       
