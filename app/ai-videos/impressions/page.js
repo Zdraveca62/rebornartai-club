@@ -82,15 +82,28 @@ export default function ImpressionsPage() {
     return text.substring(0, maxLength) + '...';
   };
 
-  const getThumbnail = (video) => {
-    if (video.cover_url && video.cover_url !== '') {
-      return video.cover_url;
-    }
-    if (video.youtube_id) {
-      return `https://img.youtube.com/vi/${video.youtube_id}/mqdefault.jpg`;
-    }
-    return 'https://via.placeholder.com/100x56?text=No+Image';
-  };
+const getThumbnail = (video) => {
+  // Ако има custom cover_url
+  if (video.cover_url && video.cover_url !== '') {
+    return video.cover_url;
+  }
+  
+  // Ако има youtube_id
+  if (video.youtube_id) {
+    // Опитваме различни резолюции (от най-висока към най-ниска)
+    const thumbnails = [
+      `https://img.youtube.com/vi/${video.youtube_id}/maxresdefault.jpg`,  // 1280x720
+      `https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`,     // 480x360
+      `https://img.youtube.com/vi/${video.youtube_id}/mqdefault.jpg`,     // 320x180
+      `https://img.youtube.com/vi/${video.youtube_id}/default.jpg`        // 120x90
+    ];
+    
+    // Връщаме първата (най-качествената), а ако не зареди, onError ще опита следващата
+    return thumbnails[0];
+  }
+  
+  return 'https://via.placeholder.com/100x56?text=No+Image';
+};
 
   if (loading) {
     return (
@@ -177,14 +190,25 @@ export default function ImpressionsPage() {
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <img 
-                  src={getThumbnail(video)}
-                  alt={video.title}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  onError={(e) => {
-                    e.target.src = 'https://via.placeholder.com/100x56?text=No+Image';
-                  }}
-                />
+<img 
+  src={getThumbnail(video)}
+  alt={video.title}
+  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+  onError={(e) => {
+    // Ако текущият URL не работи, опитваме следващия
+    const currentSrc = e.target.src;
+    
+    if (currentSrc.includes('maxresdefault')) {
+      e.target.src = `https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`;
+    } else if (currentSrc.includes('hqdefault')) {
+      e.target.src = `https://img.youtube.com/vi/${video.youtube_id}/mqdefault.jpg`;
+    } else if (currentSrc.includes('mqdefault')) {
+      e.target.src = `https://img.youtube.com/vi/${video.youtube_id}/default.jpg`;
+    } else {
+      e.target.src = 'https://via.placeholder.com/100x56?text=No+Image';
+    }
+  }}
+/>
               </div>
               <div style={{ fontSize: '0.8rem', fontWeight: 'bold', maxWidth: '100px' }}>
                 {truncateText(video.title, 15)}
