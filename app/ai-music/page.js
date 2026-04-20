@@ -232,25 +232,14 @@ const getThumbnail = (video) => {
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-<img 
-  src={getThumbnail(video)}
-  alt={video.title}
-  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-  onError={(e) => {
-    // Ако текущият URL не работи, опитваме следващия
-    const currentSrc = e.target.src;
-    
-    if (currentSrc.includes('maxresdefault')) {
-      e.target.src = `https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`;
-    } else if (currentSrc.includes('hqdefault')) {
-      e.target.src = `https://img.youtube.com/vi/${video.youtube_id}/mqdefault.jpg`;
-    } else if (currentSrc.includes('mqdefault')) {
-      e.target.src = `https://img.youtube.com/vi/${video.youtube_id}/default.jpg`;
-    } else {
-      e.target.src = 'https://via.placeholder.com/100x56?text=No+Image';
-    }
-  }}
-/>
+                <img 
+                  src={getThumbnail(song)}
+                  alt={song.title}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => {
+                    e.target.src = 'https://via.placeholder.com/100x56?text=No+Image';
+                  }}
+                />
               </div>
               <div style={{ fontSize: '0.8rem', fontWeight: 'bold', maxWidth: '100px' }}>
                 {truncateText(song.title, 15)}
